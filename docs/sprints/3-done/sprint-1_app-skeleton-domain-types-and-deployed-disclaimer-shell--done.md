@@ -2,7 +2,7 @@
 id: 1
 title: "App skeleton, domain types, and deployed disclaimer shell"
 epic: "Verified Foundation"
-status: in_progress
+status: done
 created: 2026-08-15T19:57:25+00:00
 ---
 

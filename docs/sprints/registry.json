@@ -4,8 +4,8 @@
     "1": {
       "title": "App skeleton, domain types, and deployed disclaimer shell",
       "epic": "Verified Foundation",
-      "status": "in_progress",
-      "file": "docs/sprints/2-in-progress/sprint-1_app-skeleton-domain-types-and-deployed-disclaimer-shell.md"
+      "status": "done",
+      "file": "docs/sprints/3-done/sprint-1_app-skeleton-domain-types-and-deployed-disclaimer-shell--done.md"
     },
     "2": {
       "title": "Seed library schema, loader, and citation guard",
