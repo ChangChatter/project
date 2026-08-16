@@ -2,7 +2,7 @@
 id: 2
 title: "Seed library schema, loader, and citation guard"
 epic: "Verified Foundation"
-status: in_progress
+status: done
 created: 2026-08-15T19:57:26+00:00
 ---
 
