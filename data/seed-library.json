@@ -1,0 +1,54 @@
+[
+  {
+    "id": "placeholder-disability-accommodation",
+    "title": "[VERIFIED CASE CITATION NEEDED]",
+    "citation": "0000 BCHRT 0",
+    "groundTags": ["physical or mental disability"],
+    "factPatternTags": ["disability-accommodation"],
+    "outcomeType": "[PENDING VERIFICATION]",
+    "keyFinding": "[PENDING VERIFICATION — placeholder record, not a real Tribunal decision]",
+    "sourceUrl": "https://example.invalid/pending-verification",
+    "verifiedBy": "[PENDING VERIFICATION]",
+    "verifiedDate": "0001-01-01",
+    "isPlaceholder": true
+  },
+  {
+    "id": "placeholder-family-status",
+    "title": "[VERIFIED CASE CITATION NEEDED]",
+    "citation": "0000 BCHRT 0",
+    "groundTags": ["family status"],
+    "factPatternTags": ["family-status"],
+    "outcomeType": "[PENDING VERIFICATION]",
+    "keyFinding": "[PENDING VERIFICATION — placeholder record, not a real Tribunal decision]",
+    "sourceUrl": "https://example.invalid/pending-verification",
+    "verifiedBy": "[PENDING VERIFICATION]",
+    "verifiedDate": "0001-01-01",
+    "isPlaceholder": true
+  },
+  {
+    "id": "placeholder-harassment-poisoned-work-environment",
+    "title": "[VERIFIED CASE CITATION NEEDED]",
+    "citation": "0000 BCHRT 0",
+    "groundTags": ["sex"],
+    "factPatternTags": ["harassment-poisoned-work-environment"],
+    "outcomeType": "[PENDING VERIFICATION]",
+    "keyFinding": "[PENDING VERIFICATION — placeholder record, not a real Tribunal decision]",
+    "sourceUrl": "https://example.invalid/pending-verification",
+    "verifiedBy": "[PENDING VERIFICATION]",
+    "verifiedDate": "0001-01-01",
+    "isPlaceholder": true
+  },
+  {
+    "id": "placeholder-age-termination",
+    "title": "[VERIFIED CASE CITATION NEEDED]",
+    "citation": "0000 BCHRT 0",
+    "groundTags": ["age"],
+    "factPatternTags": ["age-termination"],
+    "outcomeType": "[PENDING VERIFICATION]",
+    "keyFinding": "[PENDING VERIFICATION — placeholder record, not a real Tribunal decision]",
+    "sourceUrl": "https://example.invalid/pending-verification",
+    "verifiedBy": "[PENDING VERIFICATION]",
+    "verifiedDate": "0001-01-01",
+    "isPlaceholder": true
+  }
+]
