@@ -36,9 +36,9 @@ placeholders that look plausible. See requirement 6 and the risks section.
 2. `factPatternTags` is constrained to the PRD's four v1 fact patterns: disability/accommodation, family status, harassment/poisoned work environment, age/termination.
 3. A loader that reads the seed library and validates every record against the schema at load time.
 4. The loader rejects, with a clear error naming the offending record, any entry missing `verifiedBy`, `verifiedDate`, or `sourceUrl`, or having any of them empty.
-5. A citation guard: a pure function that takes a rendered output payload and the loaded library, and returns a pass/fail result. It fails if the payload references any case `id` or citation string not present in the library. It fails closed — an error, an empty library, or an unparseable payload is a failure, never a pass.
+5. A citation guard: a pure function taking **an `IssueGuide` (the type declared in `lib/types.ts` in Sprint 1, including its `casesWithheld` discriminated union)** and the loaded library, returning a pass/fail result. Do not invent a payload shape — `IssueGuide` is the contract Sprint 6 will render, and the guard must accept exactly that. It fails if the payload references any case `id` or citation string not present in the library. It fails closed — an error, an empty library, or an unparseable payload is a failure, never a pass.
 6. The seed library file ships this sprint containing **only** placeholder records. Every placeholder uses the literal title `[VERIFIED CASE CITATION NEEDED]` and an obviously non-real citation of the form `0000 BCHRT 0`. Placeholders must be impossible to mistake for real cases at a glance. Dev Team does not write real or realistic case citations in this sprint; that content arrives from the human verification track.
-7. The loader exposes a way to distinguish placeholder records from verified ones, and a documented flag or count so a later sprint can refuse to render placeholders in production.
+7. The loader exposes placeholder status as a **typed, exported API** — not a doc comment describing one. At minimum: per-record `isPlaceholder`, plus an exported predicate or count over the loaded library (e.g. `placeholderCount(library)`) that Sprint 6 calls to refuse rendering placeholders in production. QA1 must be able to confirm this by reading an export signature, not prose.
 8. Vitest coverage for: loader accepts a valid record; loader rejects a record missing each provenance field in turn; guard passes a payload citing only library cases; guard fails a payload citing an unknown case; guard fails on an empty library; guard fails on a malformed payload.
 
 ### Acceptance Criteria
@@ -50,7 +50,12 @@ placeholders that look plausible. See requirement 6 and the risks section.
 - QA1 confirms the guard fails closed by reading the error and empty-input paths, not only the happy path.
 - QA1 runs the Vitest suite and confirms all six test cases in requirement 8 exist and pass.
 - QA1 confirms no network call, no model call, and no filesystem write exists anywhere in the loader or guard — both are pure over their inputs.
-- GroundTruth confirms on the deployed app that no case content is user-visible yet, or that any case surface shown displays the placeholder text rather than a plausible-looking citation.
+- **GroundTruth, read this before testing.** This sprint ships loader and guard logic with **no user-visible surface** — UI is explicitly out of scope and belongs to Sprint 6. So the honest scope of gate 2 here is non-regression, and it is stated that way rather than dressed up as a content check. Verify:
+  - The deployed app still builds and loads at the recorded URL, with no console errors. *(Falsifiable: the deploy can break, and on Sprint 1 it did.)*
+  - Sprint 1's criteria still hold — disclaimer visible on first paint, after scroll, and across navigation between both routes.
+  - **No case content of any kind is user-visible.** If a case surface has appeared, that is a scope violation and a FAIL, not a pass — Sprint 2 was not supposed to render anything.
+
+  A criterion phrased as "confirm no case content is visible" on an app that has no case UI would pass whether or not the sprint did anything, which is the same unfalsifiable-check problem GroundTruth raised against Sprint 1's requirement 18. Stated as non-regression plus a scope-violation trap, it can actually fail.
 
 ### Out of Scope
 
