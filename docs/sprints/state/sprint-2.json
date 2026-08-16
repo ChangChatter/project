@@ -1,11 +1,11 @@
 {
   "id": 2,
   "title": "Seed library schema, loader, and citation guard",
-  "phase": "dev_agreed_done",
+  "phase": "groundtruth_live",
   "qa1_audit_result": "PASS",
   "qa1_audit_file_hash": "1f8bede1e5b69407e8c355617f5e7720b34e2445891a2167a22f65118d18f8e7",
   "qa1_audited_tree_hash": "441065961879f40b1132b3bcc074a322b4e13cf1",
-  "last_shipped_commit": null,
+  "last_shipped_commit": "b594e5d78716aa4e929c584ccd643d9ee19d65c0",
   "groundtruth_result": null,
   "audit_rounds": 2,
   "live_test_rounds": 0,
@@ -35,6 +35,12 @@
       "actor": "dev-team",
       "event": "dev_agreed_done",
       "detail": ""
+    },
+    {
+      "ts": "2026-08-16T18:02:14+00:00",
+      "actor": "pipeman",
+      "event": "shipped",
+      "detail": "commit=b594e5d"
     }
   ]
 }
