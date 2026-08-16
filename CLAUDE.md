@@ -275,10 +275,140 @@ that doesn't apply.
 
 ## Project standards
 
-Add your own project-specific standards below this line (tech stack,
-domain type locations, error handling conventions, git strategy, testing
-requirements, security baseline). Every agent above should read this file
-before starting work, so keep it current.
+Every agent above should read this file before starting work, so keep it
+current. If a sprint changes any of the decisions below, the sprint that
+changes it also updates this section, a standard nobody has updated is
+worse than no standard, because agents will still be auditing against it.
+
+### Stack
+
+| Layer | Choice | Notes |
+|---|---|---|
+| Frontend | Next.js (App Router) + TypeScript | Deployed on Vercel |
+| Styling | Tailwind CSS | No competing CSS-in-JS or component library unless a sprint explicitly introduces one |
+| Database | Supabase (Postgres) | Session persistence, and the verified BC HRT case-library seed data |
+| Testing | Vitest | Unit tests only, see `### Testing` below |
+
+### Domain types
+
+All shared TypeScript interfaces live in **one file, `lib/types.ts`**:
+`Situation`, `CodeGround`, `CaseExcerpt`, `SessionRecord`, and every other
+domain type. Every file imports from there. **No local redefinition of a
+domain type, ever**, not a near-copy, not a structurally-identical
+interface declared inline "just for this component", not a
+`Pick<>`/`Omit<>` alias that quietly becomes the real shape a component
+depends on. If a component needs a shape that doesn't exist yet, it goes
+in `lib/types.ts` first.
+
+This is an auditable rule, not a style preference: QA1 should fail any
+diff that declares a domain-shaped interface outside `lib/types.ts`. On an
+app whose whole job is mapping a user's situation onto protected grounds
+and case law, two drifting definitions of `CodeGround` is a correctness
+bug that presents as a UI bug, and a static audit is exactly where it gets
+caught cheaply.
+
+### Case matching
+
+Case matching is **simple tag/keyword matching against the seed library
+JSON**. Not vector search, not embeddings, not an LLM call at match time.
+See the PRD's Technical Notes for the rationale.
+
+Treat this as a scope boundary with teeth: "while we're in there, let's
+just try embeddings" is the exact shape of scope creep this line exists to
+stop. If tag matching turns out to be insufficient, that's a finding that
+produces its own sprint with its own requirements, not an in-flight
+substitution inside a sprint scoped to something else.
+
+### Writing acceptance criteria against the right gate
+
+Gate 1 (QA1) runs **before** anything is pushed. Gate 2 (GroundTruth) runs
+**after**. An acceptance criterion assigned to QA1 must therefore be
+satisfiable from the code and the repository alone — a diff, a build, a
+test run, a file's contents.
+
+**Never assign QA1 a criterion that depends on a deployed artifact**: a
+live URL, a production database row, a real deploy log, anything that only
+exists once Pipeman has pushed. Doing so creates a deadlock rather than a
+strict gate — QA1 cannot pass, `/sprint-dev-done` cannot run, Pipeman
+cannot ship, so the artifact never comes into existence. Dev Team cannot
+fix it, and QA1 cannot waive it, because amending requirements is Master
+Controller's call.
+
+This happened on Sprint 1, requirement 8. The fix pattern, if it happens
+again: split the requirement by timing and owner. What is verifiable
+pre-push (deploy access provisioned, configuration in place, evidence in
+Dev Notes) stays at gate 1. What requires the deployment moves to
+GroundTruth's gate, which already runs against the live app.
+
+**Related timing constraint.** A QA1 PASS records a hash of the sprint
+file, and `dev_done` is the only command that checks it — `ship`,
+`groundtruth`, and `complete` do not. So a sprint file may safely be edited
+after `/sprint-ship` (recording a deployed URL, for instance), but must not
+be touched between QA1's PASS and `/sprint-dev-done`, where the check will
+refuse for reasons that look unrelated to whoever hits it.
+
+### Analysis architecture
+
+Ground identification and the duty-to-accommodate procedural checklist are
+**deterministic rules**. An LLM is used for exactly one thing: rewriting
+the already-decided result into plain language.
+
+- The model does **not** choose grounds, does not choose cases, does not
+  generate citations, and never receives the seed library.
+- Citations are attached to output *after* the model has run, which is what
+  makes the PRD's grounding constraint structural rather than
+  prompt-enforced. This project has already produced one hallucinated
+  citation (`Devine v. British Columbia, 2022 BCHRT 45`, in the PRD
+  itself); the architecture assumes that will happen again given the
+  opportunity, and removes the opportunity.
+- The rules path must not import the prose module. QA1 verifies this by
+  reading imports, not by reading a description of the design.
+- If the prose layer is unavailable, the app degrades to structured rules
+  output. Legal content never depends on model availability.
+
+### Testing
+
+- **Vitest unit tests are required** on the issue-spotting and
+  tag-matching logic. That logic is the product, a wrong ground or a
+  missed match is the failure mode that matters, and it's pure enough to
+  test directly.
+- **No in-repo end-to-end tests.** GroundTruth's live browser testing
+  covers that gate, and duplicating it in-repo means maintaining two
+  answers to the same question.
+- Consequence, stated plainly so nobody is surprised by it: with no E2E in
+  the repo, a broken user flow is not caught until *after* Pipeman
+  pushes, because GroundTruth tests the deployed app. That's the designed
+  tradeoff, not an oversight. It means the Vitest coverage on matching
+  logic carries real weight, and it means a GroundTruth FAIL is a normal
+  event in this project rather than a crisis.
+- Dev Team still self-verifies before handing off: build clean, lint
+  clean, `vitest` green, plus an actual manual check in a browser. "The
+  unit tests pass" is not the same claim as "the page renders."
+
+### Git strategy
+
+- **One branch per sprint**, named `sprint-N-<short-name>` (e.g.
+  `sprint-3-case-matcher`).
+- **Pipeman squash-merges into `main`.** Pipeman is the only role that
+  pushes, per the top of this file.
+- **No force-pushes.** If history needs fixing, that's a conversation, not
+  a `--force`.
+- **Descriptive commit messages.** A message that says what changed and
+  why. Not `fix`, not `stuff`, not `updates`, not `wip`. The commit log is
+  read later by someone reconstructing why a match rule changed.
+
+### Not yet decided
+
+These are open and should be settled by a sprint that needs them, rather
+than improvised per-file:
+
+- Error handling conventions (Supabase failures, empty match results).
+- Security baseline, specifically what a `SessionRecord` may contain.
+  Users describe workplace situations involving their real employer and
+  protected characteristics; where that data lives, how long it's kept,
+  and whether it's ever attributable to a person are product decisions,
+  not implementation details, and they should be answered before session
+  persistence ships, not after.
 
 **This is Fully Completely, not Maestro.** The machine running this may also
 have a separate, unrelated sprint-workflow product called Maestro installed

@@ -1,0 +1,41 @@
+{
+  "next_id": 7,
+  "sprints": {
+    "1": {
+      "title": "App skeleton, domain types, and deployed disclaimer shell",
+      "epic": "Verified Foundation",
+      "status": "in_progress",
+      "file": "docs/sprints/2-in-progress/sprint-1_app-skeleton-domain-types-and-deployed-disclaimer-shell.md"
+    },
+    "2": {
+      "title": "Seed library schema, loader, and citation guard",
+      "epic": "Verified Foundation",
+      "status": "todo",
+      "file": "docs/sprints/1-todo/sprint-2_seed-library-schema-loader-and-citation-guard.md"
+    },
+    "3": {
+      "title": "Three-step guided intake with minimum-detail validation",
+      "epic": "Intake",
+      "status": "todo",
+      "file": "docs/sprints/1-todo/sprint-3_three-step-guided-intake-with-minimum-detail-validation.md"
+    },
+    "4": {
+      "title": "Tag and keyword case matching engine",
+      "epic": "Analysis",
+      "status": "todo",
+      "file": "docs/sprints/1-todo/sprint-4_tag-and-keyword-case-matching-engine.md"
+    },
+    "5": {
+      "title": "Rules-based ground and duty spotter with procedural checklist",
+      "epic": "Analysis",
+      "status": "todo",
+      "file": "docs/sprints/1-todo/sprint-5_rules-based-ground-and-duty-spotter-with-procedural-checklist.md"
+    },
+    "6": {
+      "title": "Issue guide output, acknowledgment gate, and escalation triggers",
+      "epic": "Output and Guardrails",
+      "status": "todo",
+      "file": "docs/sprints/1-todo/sprint-6_issue-guide-output-acknowledgment-gate-and-escalation-triggers.md"
+    }
+  }
+}
