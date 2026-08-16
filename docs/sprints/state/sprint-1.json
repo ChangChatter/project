@@ -1,11 +1,11 @@
 {
   "id": 1,
   "title": "App skeleton, domain types, and deployed disclaimer shell",
-  "phase": "dev_agreed_done",
+  "phase": "groundtruth_live",
   "qa1_audit_result": "PASS",
   "qa1_audit_file_hash": "cc50e6d1ddddca5e553af3a782897c7f5aae065c291ee17de01370c77dcc6aef",
   "qa1_audited_tree_hash": "5c283fd7a09f46e45c4912e80551ea784bbc1b4d",
-  "last_shipped_commit": null,
+  "last_shipped_commit": "838f74f6ba1083812f5ed6c7fec011554a733922",
   "groundtruth_result": null,
   "audit_rounds": 4,
   "live_test_rounds": 0,
@@ -47,6 +47,12 @@
       "actor": "dev-team",
       "event": "dev_agreed_done",
       "detail": ""
+    },
+    {
+      "ts": "2026-08-16T06:21:01+00:00",
+      "actor": "pipeman",
+      "event": "shipped",
+      "detail": "commit=838f74f"
     }
   ]
 }
