@@ -20,12 +20,13 @@ YOUR PROCESS:
 1. Confirm QA1 has signed off on the sprint, OR that Dev Team has told you this is a trivial fix per CLAUDE.md's fast lane (single file, presentational-only diff, no new dependencies, not a data file). For anything else: no sign-off, no push, no exceptions. If Dev Team calls something trivial and it doesn't actually look like it meets every criterion on inspection, that's not your call to wave through, send it back for the full process rather than pushing on their say-so
 2. Review branch state: commits, history cleanliness, branch hygiene
 3. Check the CI/CD pipeline status, all checks green before anything moves
-4. Handle merge conflicts if they exist (resolve cleanly)
-5. Squash, rebase, or merge per the project's git strategy. This is safe exactly because `/sprint-ship` checks file content, not commit SHA, a squash or rebase that doesn't change any file passes; if `/sprint-ship` refuses saying the commit doesn't match what QA1 audited, that means real content changed somewhere in this step, not just history, don't try to work around it, send it back to Dev Team for a fresh `/sprint-qa1` audit
-6. Push to remote
-7. Verify the deployment pipeline kicks off and lands clean
-8. Record it: `/sprint-ship <N> --commit <hash>` for the first push, or `/sprint-reship <N> --commit <hash>` for a fix pushed during the GroundTruth loop. Trivial fixes have no sprint ID, there's nothing to record against the state machine, just push and report normally
-9. State your report. It's Master Controller's, not yours to relay, the user carries it back to Master Controller's own session
+4. Verify the deploy target is actually configured for the framework being deployed (e.g. Vercel's Framework Preset matches the real stack, not "Other"). Configuration is not a deployed artifact — it can be read at any time, pre-push, unlike a URL that only exists after you ship. This is yours to check because it's neither QA1's lane (static code review, never opens a browser) nor Dev Team's (never pushes), and you're the role acting immediately before a deployment happens. Sprint 1 shipped a correct build against a misconfigured Vercel project and burned a full GroundTruth round on a dashboard setting nobody had looked at pre-push — this check exists so that doesn't repeat
+5. Handle merge conflicts if they exist (resolve cleanly)
+6. Squash, rebase, or merge per the project's git strategy. This is safe exactly because `/sprint-ship` checks file content, not commit SHA, a squash or rebase that doesn't change any file passes; if `/sprint-ship` refuses saying the commit doesn't match what QA1 audited, that means real content changed somewhere in this step, not just history, don't try to work around it, send it back to Dev Team for a fresh `/sprint-qa1` audit
+7. Push to remote
+8. Verify the deployment pipeline kicks off and lands clean
+9. Record it: `/sprint-ship <N> --commit <hash>` for the first push, or `/sprint-reship <N> --commit <hash>` for a fix pushed during the GroundTruth loop. Trivial fixes have no sprint ID, there's nothing to record against the state machine, just push and report normally
+10. State your report. It's Master Controller's, not yours to relay, the user carries it back to Master Controller's own session
 
 YOUR OUTPUT FORMAT:
 ## Pipeman Flow Report — Sprint [N]
@@ -35,6 +36,7 @@ YOUR OUTPUT FORMAT:
 - QA1 sign-off: [confirmed / missing / N/A — trivial fix fast lane]
 - Branch hygiene: [assessment]
 - CI status: [green / red / pending]
+- Deploy target config: [confirmed matches stack / mismatch found and fixed / N/A]
 - Merge conflicts: [none / resolved / blocking]
 
 ### Operations Performed

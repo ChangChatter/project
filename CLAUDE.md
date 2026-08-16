@@ -347,6 +347,39 @@ after `/sprint-ship` (recording a deployed URL, for instance), but must not
 be touched between QA1's PASS and `/sprint-dev-done`, where the check will
 refuse for reasons that look unrelated to whoever hits it.
 
+**Documented is not verified.** Splitting a requirement across gates has a
+second failure mode, and it is the one that actually cost a round. When the
+verifiable half moves to gate 2, do not leave behind a pre-push half phrased
+as though it verifies something when all it can do is record an assertion.
+Apply this test to every gate-1 criterion: *could someone falsify this by
+reading the repo or the config?* If the only way to satisfy it is "a person
+wrote down that it is fine," it verifies nothing and should say so plainly
+rather than reading like a check.
+
+Sprint 1's requirement 18 failed this test. It asked for "deploy access
+confirmed and build configuration in place," QA1 passed it on a Dev Notes
+entry stating the Vercel project was connected and auto-deploying on push,
+and both of those statements were **true**. The build then failed anyway:
+the Vercel Framework Preset was set to "Other" rather than Next.js, so the
+platform looked for a `public/` output directory that an App Router build
+never emits. GroundTruth round 1 was a hard FAIL with no app to test, and
+the sprint took a reship loop to recover.
+
+**Configuration is not a deployed artifact.** That is the specific mistake
+to avoid repeating. A deployed URL genuinely cannot exist before the push;
+the deploy target's *settings* can be read at any time, and reading them
+would have caught this a day earlier. Do not sweep configuration into gate 2
+just because the deployment it produces belongs there.
+
+**Owner: Pipeman, pre-push.** This cannot be QA1 — QA1 is static code review
+and never opens a browser — and it cannot be Dev Team, who never push.
+Pipeman already runs pre-push checks (branch hygiene, clean build), and is
+the role acting immediately before a deployment happens. Verifying that the
+deploy target is configured for the framework actually being deployed
+belongs on that checklist. Consider mirroring this into
+`.claude/agents/pipeman.md` so it is in front of the role that has to do it,
+not only in the shared rulebook.
+
 ### Analysis architecture
 
 Ground identification and the duty-to-accommodate procedural checklist are
