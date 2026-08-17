@@ -1,11 +1,11 @@
 {
   "id": 4,
   "title": "Tag and keyword case matching engine",
-  "phase": "dev_agreed_done",
+  "phase": "groundtruth_live",
   "qa1_audit_result": "PASS",
   "qa1_audit_file_hash": "bbe4e044189984b4caa6f1c7f999c5c0fe849077ef5ef973893b98ea48baa35b",
   "qa1_audited_tree_hash": "5856ee998ba97fd8b7937ed496aa377e481e88e1",
-  "last_shipped_commit": null,
+  "last_shipped_commit": "1ba3bbf26a5bb3e25ce74efcf6c141ac7ab67f8f",
   "groundtruth_result": null,
   "audit_rounds": 2,
   "live_test_rounds": 0,
@@ -35,6 +35,12 @@
       "actor": "dev-team",
       "event": "dev_agreed_done",
       "detail": ""
+    },
+    {
+      "ts": "2026-08-17T18:33:19+00:00",
+      "actor": "pipeman",
+      "event": "shipped",
+      "detail": "commit=1ba3bbf"
     }
   ]
 }
