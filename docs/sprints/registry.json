@@ -16,8 +16,8 @@
     "3": {
       "title": "Three-step guided intake with minimum-detail validation",
       "epic": "Intake",
-      "status": "in_progress",
-      "file": "docs/sprints/2-in-progress/sprint-3_three-step-guided-intake-with-minimum-detail-validation.md"
+      "status": "done",
+      "file": "docs/sprints/3-done/sprint-3_three-step-guided-intake-with-minimum-detail-validation--done.md"
     },
     "4": {
       "title": "Tag and keyword case matching engine",

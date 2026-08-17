@@ -2,7 +2,7 @@
 id: 3
 title: "Three-step guided intake with minimum-detail validation"
 epic: "Intake"
-status: in_progress
+status: done
 created: 2026-08-15T19:57:27+00:00
 ---
 
