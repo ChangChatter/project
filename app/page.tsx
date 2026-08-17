@@ -7,12 +7,18 @@ export default function Home() {
         BC Employer Issue Guide
       </h1>
       <p className="mt-4 text-zinc-700 dark:text-zinc-300">
-        This is the app skeleton. Intake, matching, and guide output land in
-        later sprints.
+        Matching and guide output land in later sprints.
       </p>
       <Link
-        href="/about"
+        href="/intake"
         className="mt-6 inline-block text-blue-700 underline dark:text-blue-400"
+      >
+        Start intake
+      </Link>
+      <br />
+      <Link
+        href="/about"
+        className="mt-2 inline-block text-blue-700 underline dark:text-blue-400"
       >
         View the placeholder route
       </Link>

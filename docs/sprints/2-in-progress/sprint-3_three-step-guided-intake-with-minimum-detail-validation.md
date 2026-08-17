@@ -2,7 +2,7 @@
 id: 3
 title: "Three-step guided intake with minimum-detail validation"
 epic: "Intake"
-status: todo
+status: in_progress
 created: 2026-08-15T19:57:27+00:00
 ---
 
@@ -71,12 +71,45 @@ Sprint 3 owns its final field list. This sprint therefore *must* modify
     - **`data/seed-library.json` values do not change.** Sprint 2 already tagged placeholders with the legal fact patterns, so this is a type split, not a data migration. Track H's in-flight case tagging is unaffected and needs no rework.
     - Update the two affected test files (`lib/seed-library.test.ts`, `lib/citation-guard.test.ts`) to the new type names. No behavioural change to the loader or guard.
 11. Finalize `IntakeMetadata` with the requirement 2 fields — employment status (active / suspended / terminated), tenure, and formal complaints lodged to date — replacing the Sprint 1 stub. Update its doc comment to drop the "stubbed" note.
-12. Modifications to `lib/types.ts` are **bounded to requirements 10 and 11**. No other domain type changes shape in this sprint. If something else looks wrong, flag it to Master Controller rather than fixing it in passing.
+12. Modifications to `lib/types.ts` are **bounded to requirements 10, 11, and 14**. No other domain type changes shape in this sprint. If something else looks wrong, flag it to Master Controller rather than fixing it in passing. *(Bound widened by Amendment 2 to include requirement 14.)*
+
+### Amendment 2 — 2026-08-16, after QA1 round 1 (CONDITIONAL), Master Controller
+
+QA1 raised two items as non-blocking and correctly escalated the second as
+Master Controller's call. Both are taken. Dev Team is already in this code
+fixing round-1 findings, so the marginal cost now is near zero and rises
+steeply once this closes.
+
+**The threshold is per-prompt, not combined.** The shipped implementation
+joins all three requirement-4 prompts and validates the total against 100
+characters, so an employer can write a paragraph about what happened, leave
+"what documentation has been exchanged" and "what action are you
+considering" entirely blank, and proceed. That is not a tuning preference —
+the documentation prompt is the procedurally decisive one. The PRD's own
+rationale for this product is that BC HRT disputes usually turn on
+procedural compliance, and a combined threshold optimises for the prompt
+users find easiest to answer while letting the legally load-bearing one go
+empty.
+
+It also breaks something already decided upstream. Sprint 5 requires
+`ProceduralCheckStatus` to distinguish "not done" from "insufficient
+information" precisely so the tool never asserts an employer failed a duty
+the intake never established. That three-state distinction is unreachable
+if intake cannot tell "no documentation was exchanged" — a real, legally
+significant fact — from "the employer skipped the question." Hence
+requirement 14.
+
+13. Minimum-detail validation is **per-prompt**. Each of requirement 4's three prompts carries its own minimum, expressed as named exported constants, each with a comment explaining its value. The single combined `MIN_NARRATIVE_LENGTH` gate is replaced, not supplemented.
+14. Each prompt offers an explicit **"nothing yet / not applicable"** affordance that satisfies validation for that prompt. `Situation` records the three prompt responses discretely, each either supplied text or an explicit not-reported marker. The distinction must be representable in the type — not inferred from an empty string — so Sprint 5 can reach all three `ProceduralCheckStatus` states. The exact shape is Dev Team's call; that the distinction is type-level is not.
+15. Validation messages are announced to assistive technology: `role="alert"` on the message container, `aria-describedby` linking each input to its message, and `aria-invalid` on the failing input. Requirement 6 mandates a specific plain-language message, and a message a screen-reader user never receives delivers half of that requirement. This is a human-rights compliance tool whose subject matter includes disability accommodation; an intake form that silently blocks disabled users is a real barrier before it is an embarrassment.
 
 ### Acceptance Criteria
 
 - QA1 confirms `Situation`, `IntakeMetadata`, and `ConcernCategory` are imported from `lib/types.ts`, and that the diff contains no locally declared domain type, including inline near-copies and `Pick<>`/`Omit<>` aliases standing in for a domain shape.
-- QA1 confirms `lib/types.ts` changes are **bounded to requirements 10 and 11** — the `ConcernCategory`/`FactPatternTag` split and the `IntakeMetadata` finalization. Any other domain type changing shape in this diff is a FAIL. *(Supersedes the original "lib/types.ts is unmodified" criterion, which contradicted requirement 11 — see Amendment 1.)*
+- QA1 confirms `lib/types.ts` changes are **bounded to requirements 10, 11, and 14** — the `ConcernCategory`/`FactPatternTag` split, the `IntakeMetadata` finalization, and the discrete per-prompt responses. Any other domain type changing shape in this diff is a FAIL. *(Supersedes the original "lib/types.ts is unmodified" criterion, which contradicted requirement 11 — see Amendments 1 and 2.)*
+- QA1 confirms validation is per-prompt: three named exported constants with explanatory comments, and no single combined gate remaining. A test that passes 100 characters in one prompt with the other two empty must fail validation.
+- QA1 confirms the "nothing yet" state is representable in `Situation` as a distinct marker, **not** as an empty string or absent field — read the type, since an empty string is exactly what makes Sprint 5's three-state checklist unreachable.
+- QA1 confirms `role="alert"`, `aria-describedby`, and `aria-invalid` are present on the validation path.
 - QA1 confirms `ConcernCategory` now holds the four **intake** concerns and `FactPatternTag` the four **legal** fact patterns, and that no intake component references a legal fact pattern directly. The bridge between the two vocabularies belongs to the analysis layer, not the form — specifically to Sprint 4 (concern → fact pattern, for selecting cases) and Sprint 5 (situation → Code ground, for issue spotting). Those are two distinct mappings and neither is Sprint 3's.
 - QA1 confirms `data/seed-library.json` is unchanged by this diff. A data edit here means the split was done as a migration instead of a retype.
 - QA1 confirms `lib/seed-library-schema.ts`'s exhaustiveness check retyped to `FactPatternTag` and still fails to compile if a fact pattern is added without updating it.
@@ -87,6 +120,8 @@ Sprint 3 owns its final field list. This sprint therefore *must* modify
 - GroundTruth navigates backward from step 3 to step 1 and confirms previously entered data is still present.
 - GroundTruth attempts to proceed from step 2 with no concern selected and confirms it is blocked with a specific message.
 - GroundTruth submits a two-word narrative and confirms analysis does not run, and that the message names what is missing.
+- GroundTruth writes a detailed answer to the first prompt only, leaves the other two blank, and confirms it is **blocked** — this is the specific case the combined threshold let through.
+- GroundTruth uses the "nothing yet / not applicable" affordance on the documentation prompt and confirms the flow proceeds, so an employer who genuinely has exchanged no documentation is not stuck behind a wall they cannot honestly clear.
 - GroundTruth completes the entire flow using only the keyboard.
 - GroundTruth confirms the Sprint 1 disclaimer banner is still visible on every step of the flow.
 

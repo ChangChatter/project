@@ -1,7 +1,7 @@
 import type { JSONSchemaType } from "ajv";
 import type {
   CaseExcerpt,
-  ConcernCategory,
+  FactPatternTag,
   HumanRightsCodeGround,
 } from "./types";
 
@@ -37,12 +37,12 @@ const HUMAN_RIGHTS_CODE_GROUNDS = membersOf({
   "criminal or summary conviction unrelated to the employment": true,
 } satisfies Record<HumanRightsCodeGround, true>);
 
-const CONCERN_CATEGORIES = membersOf({
+const FACT_PATTERN_TAGS = membersOf({
   "disability-accommodation": true,
   "family-status": true,
   "harassment-poisoned-work-environment": true,
   "age-termination": true,
-} satisfies Record<ConcernCategory, true>);
+} satisfies Record<FactPatternTag, true>);
 
 /**
  * JSON Schema for `CaseExcerpt.verifiedDate` — real calendar validation via
@@ -75,7 +75,7 @@ export const caseExcerptJsonSchema: JSONSchemaType<CaseExcerpt> = {
     },
     factPatternTags: {
       type: "array",
-      items: { type: "string", enum: CONCERN_CATEGORIES },
+      items: { type: "string", enum: FACT_PATTERN_TAGS },
     },
     outcomeType: { type: "string", minLength: 1 },
     keyFinding: { type: "string", minLength: 1 },

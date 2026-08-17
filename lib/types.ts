@@ -10,12 +10,27 @@
  */
 
 /**
- * The four workplace-concern patterns this v1 product covers. Shared by
- * intake's concern-selection step and by the seed library's fact-pattern
- * tagging, so a case can only be tagged with a concern the intake can
- * actually produce.
+ * The four operational, employer-observable intake concerns from the PRD
+ * — phrased as an employer would describe the situation, not as a legal
+ * characterization. Deliberately a different vocabulary from
+ * `FactPatternTag`, which tags what a case is *about* in legal terms —
+ * see Sprint 3 Amendment 1. Mapping one onto the other is the
+ * issue-spotting this tool exists to do (Sprint 4 for case selection,
+ * Sprint 5 for ground identification), never something the intake form
+ * itself does.
  */
 export type ConcernCategory =
+  | "medical-absence"
+  | "schedule-flexibility"
+  | "interpersonal-conflict"
+  | "performance-management";
+
+/**
+ * The four legal fact patterns the seed library tags cases with. Split
+ * from `ConcernCategory` in Sprint 3 Amendment 1 — see that type's doc
+ * comment for why the two vocabularies must stay separate.
+ */
+export type FactPatternTag =
   | "disability-accommodation"
   | "family-status"
   | "harassment-poisoned-work-environment"
@@ -28,15 +43,35 @@ export type ConcernCategory =
  */
 export type ISODateString = string;
 
+/** Employment status as of intake — Sprint 3 requirement 2's closed set. */
+export type EmploymentStatus = "active" | "suspended" | "terminated";
+
 /**
- * Structured context captured in intake step 1 (metadata). Stubbed;
- * Sprint 3 owns the final field list for the metadata step.
+ * Structured context captured in intake step 1 (metadata) — finalized by
+ * Sprint 3 Amendment 1 requirement 11.
  */
 export interface IntakeMetadata {
   /** Always BC for v1 — the product scopes to the BC Human Rights Code. */
   province: "BC";
+  employmentStatus: EmploymentStatus;
+  /** Free-text length of employment, e.g. "2 years", "8 months". */
+  tenure: string;
+  /** Whether a formal complaint has been lodged to date, by either party. */
+  formalComplaintsLodged: boolean;
   submittedAt: ISODateString;
 }
+
+/**
+ * One of the three guided fact-narrative prompt responses — either
+ * supplied text or an explicit "nothing yet / not applicable" marker.
+ * Kept as a real type-level distinction, not inferred from an empty
+ * string, per Sprint 3 Amendment 2 requirement 14: Sprint 5's three-state
+ * `ProceduralCheckStatus` needs to tell "no documentation was exchanged"
+ * (a real, legally significant fact) apart from "the employer skipped the
+ * question" (missing information), and an empty string can't carry that
+ * distinction.
+ */
+export type FactPromptResponse = { reported: true; text: string } | { reported: false };
 
 /**
  * The validated output of the full three-step intake flow (metadata,
@@ -53,10 +88,19 @@ export interface Situation {
    * excluded at the type level rather than left to runtime validation.
    */
   concerns: [ConcernCategory, ...ConcernCategory[]];
-  /** Free-text narrative supplied during the guided fact-gathering step. */
+  /**
+   * Free-text narrative supplied during the guided fact-gathering step —
+   * the reported entries of `facts`, joined for the prose layer's benefit.
+   * Not the source of truth; `facts` is.
+   */
   narrative: string;
-  /** Discrete facts surfaced by the guided intake, one entry per fact. */
-  facts: string[];
+  /**
+   * The three requirement-4 prompt responses, in order: what happened,
+   * what documentation or medical information has been exchanged, what
+   * action the employer is considering. Always exactly three — one per
+   * prompt, never filtered — per Sprint 3 Amendment 2 requirement 14.
+   */
+  facts: [FactPromptResponse, FactPromptResponse, FactPromptResponse];
 }
 
 /**
@@ -82,7 +126,7 @@ export interface Situation {
  *
  * Harassment is deliberately absent: under the Code, harassment is
  * discrimination *on the basis of* a ground, not a ground itself, and is
- * already modelled as a `ConcernCategory` fact-pattern tag.
+ * already modelled as a `FactPatternTag`.
  */
 export type HumanRightsCodeGround =
   // Section 13(1) protected characteristics (14).
@@ -168,7 +212,7 @@ export interface CaseExcerpt {
   /** Grounds this case is relevant to. */
   groundTags: HumanRightsCodeGround[];
   /** Constrained to the PRD's four v1 fact patterns. */
-  factPatternTags: ConcernCategory[];
+  factPatternTags: FactPatternTag[];
   outcomeType: string;
   keyFinding: string;
   sourceUrl: string;
