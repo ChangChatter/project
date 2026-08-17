@@ -1,5 +1,5 @@
 {
-  "next_id": 7,
+  "next_id": 8,
   "sprints": {
     "1": {
       "title": "App skeleton, domain types, and deployed disclaimer shell",
@@ -36,6 +36,12 @@
       "epic": "Output and Guardrails",
       "status": "todo",
       "file": "docs/sprints/1-todo/sprint-6_issue-guide-output-acknowledgment-gate-and-escalation-triggers.md"
+    },
+    "7": {
+      "title": "Swap verified BC HRT case data into the seed library",
+      "epic": "Verified Foundation",
+      "status": "todo",
+      "file": "docs/sprints/1-todo/sprint-7_swap-verified-bc-hrt-case-data-into-the-seed-library.md"
     }
   }
 }
