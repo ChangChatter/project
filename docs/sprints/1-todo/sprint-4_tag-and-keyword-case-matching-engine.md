@@ -57,7 +57,8 @@ network, no model, no clock.
 ### Dependencies
 
 - Blocks: Sprint 5, Sprint 6.
-- Blocked by: Sprint 2 (schema and loader).
+- Blocked by: Sprint 2 (schema and loader) **and Sprint 3**. Sprint 3 is not just an upstream producer of `Situation` — its Amendment 1 splits `ConcernCategory` into intake concerns and a new `FactPatternTag`, and retypes `CaseExcerpt.factPatternTags`. Both are inputs to this matcher. Do not start this sprint in parallel with Sprint 3; the types it matches on are being rewritten there.
+- Note for the matcher's design: after Sprint 3, intake produces `ConcernCategory` (operational) while the library is tagged with `FactPatternTag` (legal). Bridging those two vocabularies is part of what this sprint's tag matching does, alongside keyword matching over the narrative — it is not a mismatch to be normalized away.
 - External: none. Real case content improves match quality but is not required — requirement 9 keeps this sprint runnable against placeholders.
 
 ### Risks & Mitigations
