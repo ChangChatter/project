@@ -1,11 +1,11 @@
 {
   "id": 3,
   "title": "Three-step guided intake with minimum-detail validation",
-  "phase": "dev_agreed_done",
+  "phase": "groundtruth_live",
   "qa1_audit_result": "PASS",
   "qa1_audit_file_hash": "bce74e68e0774327cf277848488f6e71b4e5d13e65a554601df6d5f8aaff9ef9",
   "qa1_audited_tree_hash": "62a67a3a48f9de55bde7672221242da4feb86a8b",
-  "last_shipped_commit": null,
+  "last_shipped_commit": "39a901238d10de47591d39ed92034aab769debb3",
   "groundtruth_result": null,
   "audit_rounds": 2,
   "live_test_rounds": 0,
@@ -35,6 +35,12 @@
       "actor": "dev-team",
       "event": "dev_agreed_done",
       "detail": ""
+    },
+    {
+      "ts": "2026-08-17T04:59:01+00:00",
+      "actor": "pipeman",
+      "event": "shipped",
+      "detail": "commit=39a9012"
     }
   ]
 }
