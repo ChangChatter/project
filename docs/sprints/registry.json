@@ -22,8 +22,8 @@
     "4": {
       "title": "Tag and keyword case matching engine",
       "epic": "Analysis",
-      "status": "todo",
-      "file": "docs/sprints/1-todo/sprint-4_tag-and-keyword-case-matching-engine.md"
+      "status": "in_progress",
+      "file": "docs/sprints/2-in-progress/sprint-4_tag-and-keyword-case-matching-engine.md"
     },
     "5": {
       "title": "Rules-based ground and duty spotter with procedural checklist",

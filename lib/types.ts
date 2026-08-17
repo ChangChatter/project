@@ -107,10 +107,10 @@ export interface Situation {
  * The closed set of grounds on which the BC Human Rights Code prohibits
  * employment discrimination — Human Rights Code, RSBC 1996, c 210, s 13,
  * https://www.bclaws.gov.bc.ca/civix/document/id/consol41/consol41/00_96210_01.
- * Exactly 15 members, verified against secondary sources by Chang per
- * Sprint 1 Amendment 1 requirement 10, with a direct statute check still
- * open (see the sprint file's Dependencies section) before verified case
- * data enters the Sprint 2 seed library.
+ * Exactly 15 members. Verified against secondary sources by Chang per
+ * Sprint 1 Amendment 1 requirement 10, then against the live in-force
+ * statute text directly — that direct check closed 2026-08-15, confirming
+ * the 15 members correct as implemented, with no change required here.
  *
  * Two structurally distinct categories, kept in one union because
  * `CaseExcerpt.groundTags` must be able to tag any decision the seed
@@ -232,14 +232,25 @@ export interface CaseExcerpt {
 }
 
 /**
+ * One reason a case was surfaced by the matcher — either its case record
+ * carries a fact-pattern tag reached via the concern-to-fact-pattern
+ * bridge, or a keyword from the situation's narrative/facts matched the
+ * case's text. Discriminated rather than an unconstrained `string[]`, so
+ * Sprint 6 can explain to the employer *why* a given case was shown —
+ * see Sprint 4 requirement 12.
+ */
+export type MatchedTag =
+  | { kind: "fact-pattern"; tag: FactPatternTag }
+  | { kind: "keyword"; term: string };
+
+/**
  * One ranked case match for a Situation, produced by the deterministic
- * tag/keyword matcher. Stubbed; Sprint 4 owns the final scoring and
- * tie-break shape.
+ * tag/keyword matcher — finalized by Sprint 4.
  */
 export interface MatchResult {
   case: CaseExcerpt;
   score: number;
-  matchedTags: string[];
+  matchedTags: MatchedTag[];
 }
 
 /**
