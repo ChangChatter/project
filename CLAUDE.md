@@ -347,6 +347,22 @@ after `/sprint-ship` (recording a deployed URL, for instance), but must not
 be touched between QA1's PASS and `/sprint-dev-done`, where the check will
 refuse for reasons that look unrelated to whoever hits it.
 
+**And the inverse: do not assign GroundTruth a criterion that needs a UI
+the sprint does not build.** Several sprints in this project ship pure logic
+with no user-visible surface — a loader, a matcher, a rules engine — because
+rendering is deliberately concentrated in one later sprint. A gate-2
+criterion like "run a scenario through the app and confirm the ground is
+identified" is untestable in those sprints for the same structural reason a
+deployed-URL check is untestable at gate 1: the thing being checked does not
+exist yet. Sprint 5's original criteria did exactly this and were moved to
+Sprint 6 at pre-review.
+
+For a logic-only sprint, state gate 2's scope honestly as non-regression —
+the app still builds and loads, prior sprints' flows still work — plus a
+scope-violation trap: if this sprint's output *has* become user-visible,
+that is a FAIL, because rendering belonged to another sprint. That version
+can actually fail, which the dressed-up version cannot.
+
 **Documented is not verified.** Splitting a requirement across gates has a
 second failure mode, and it is the one that actually cost a round. When the
 verifiable half moves to gate 2, do not leave behind a pre-push half phrased

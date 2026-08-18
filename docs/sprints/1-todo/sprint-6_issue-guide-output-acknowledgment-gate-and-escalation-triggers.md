@@ -30,7 +30,7 @@ export are Sprint 7 and can be dropped without the product ceasing to work.
 1. A results view rendering the `IssueGuide`: identified grounds with plain-language explanation, the procedural checklist with its three-state status, matched cases, and next steps.
 2. Matched cases display title, citation, core fact pattern, and key finding, per the PRD.
 3. Next steps are visually and structurally separated into **internal actions** (e.g. request a functional abilities form) and **counsel triggers** (e.g. a complaint has already been filed; termination of an employee on medical leave is being considered). The separation must be unmistakable, not a subheading in a single list.
-4. Every generated guide displays at least one escalation trigger. If the rules produce none, the guide displays the standing trigger that counsel should be consulted before any termination or discipline decision connected to a protected ground.
+4. Every generated guide displays at least one escalation trigger, rendered from the `EscalationTrigger[]` producer built in Sprint 5 requirement 4. This sprint renders triggers; it does not derive them. If the rules produce none, the guide displays the standing trigger that counsel should be consulted before any termination or discipline decision connected to a protected ground.
 5. **Acknowledgment gate:** the user must explicitly acknowledge the disclaimer before any output is displayed. The output is not rendered behind a scroll, not blurred, not present in the DOM — it is not delivered to the client view until acknowledgment.
 6. The acknowledgment is an affirmative action, not a pre-checked box, and its wording states that the tool is informational triage and does not constitute legal advice.
 7. **The citation guard from Sprint 2 runs on every render.** If it fails, the guide renders without the case section and displays a clear notice that case references were withheld. It never renders an unverified citation, and never fails silently.
@@ -49,6 +49,9 @@ export are Sprint 7 and can be dropped without the product ceasing to work.
 - GroundTruth completes a full intake, acknowledges, and confirms the guide renders with all four sections present.
 - GroundTruth confirms internal actions and counsel triggers are visually distinguishable at a glance, without reading closely.
 - GroundTruth confirms at least one escalation trigger appears, including on a scenario chosen to be as benign as the intake allows.
+- GroundTruth runs a disability/accommodation scenario end to end and confirms a disability ground is identified, with a plain-language explanation. *(Moved here from Sprint 5, which has no UI to test it against.)*
+- GroundTruth runs a scenario with deliberately sparse facts, using the "nothing yet" affordance, and confirms the procedural checklist reports missing information rather than asserting the employer failed a step. *(Moved from Sprint 5.)*
+- GroundTruth confirms no output anywhere predicts an outcome, states a likelihood, or gives a percentage. *(Moved from Sprint 5.)*
 - GroundTruth confirms **every citation displayed traces to an entry in the seed library** — this is a PRD success metric and is checked, not assumed.
 - GroundTruth confirms placeholder records render as pending verification rather than as case citations.
 - GroundTruth confirms the disclaimer banner is present on the results view alongside the acknowledgment already given.
