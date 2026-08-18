@@ -2,7 +2,7 @@
 id: 4
 title: "Tag and keyword case matching engine"
 epic: "Analysis"
-status: in_progress
+status: done
 created: 2026-08-15T19:57:28+00:00
 ---
 
