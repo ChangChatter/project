@@ -2,7 +2,7 @@
 id: 5
 title: "Rules-based ground and duty spotter with procedural checklist"
 epic: "Analysis"
-status: in_progress
+status: done
 created: 2026-08-15T19:57:29+00:00
 ---
 
