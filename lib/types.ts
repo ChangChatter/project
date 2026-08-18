@@ -169,7 +169,7 @@ export type V1SpottedGround = (typeof V1_SPOTTED_GROUNDS)[number];
  * A BC Human Rights Code ground identified by the rules-based spotter for
  * a given Situation, together with the specific facts that triggered it.
  * Never a finding of liability — always phrased as plausible and worth
- * examining. Stubbed; Sprint 5 owns the final rules shape.
+ * examining. Finalized by Sprint 5.
  */
 export interface CodeGround {
   ground: HumanRightsCodeGround;
@@ -178,6 +178,16 @@ export interface CodeGround {
   /** Plain-language explanation, filled in by the prose layer. */
   explanation?: string;
 }
+
+/**
+ * `CodeGround` narrowed so `ground` is a `V1SpottedGround`, not the full
+ * statutory union — the actual return type of the v1 rules engine. A rule
+ * emitting a ground outside v1's four-ground scope (e.g. `"religion"`)
+ * fails to compile against this type rather than reaching a user.
+ * `CodeGround` itself stays typed to the full union because `CaseExcerpt`
+ * depends on it modelling the whole domain — see Sprint 5 requirement 8.
+ */
+export type IdentifiedGround = CodeGround & { ground: V1SpottedGround };
 
 /**
  * The three-state status of a single duty-to-accommodate procedural
@@ -190,7 +200,7 @@ export type ProceduralCheckStatus = "done" | "not-done" | "insufficient-informat
 /**
  * One duty-to-accommodate procedural line item produced by the rules
  * engine (e.g. "was medical documentation requested before denial").
- * Stubbed; Sprint 5 owns the final set of checklist items.
+ * Finalized by Sprint 5.
  */
 export interface ProceduralCheckItem {
   id: string;

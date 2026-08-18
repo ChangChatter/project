@@ -2,7 +2,7 @@
 id: 5
 title: "Rules-based ground and duty spotter with procedural checklist"
 epic: "Analysis"
-status: todo
+status: in_progress
 created: 2026-08-15T19:57:29+00:00
 ---
 
@@ -65,6 +65,42 @@ until Sprint 6).
 
 13. Vitest coverage for: a `medical-absence` concern identifying disability; a concern set identifying multiple grounds; a situation identifying no ground (returns empty, asserts nothing); every `reported: false` prompt yielding `insufficient-information` rather than `not-done`; a whitespace-only reported response also yielding `insufficient-information`; a formal-complaint-lodged situation producing a counsel trigger; determinism across repeated runs; a test asserting the rules modules do not import the prose module; and a test asserting the prose payload contains no narrative or raw fact text.
 
+### Amendment 1 — 2026-08-18, after QA1 round 1 (CONDITIONAL), Master Controller
+
+QA1's HIGH finding is correct and the root cause is this sprint's
+definition, not Dev Team's implementation. Requirement 3 asked for a
+"documentation requested before denial" check, and Sprint 3's intake asks a
+narrative question that establishes *what* was exchanged but never *when*
+relative to a denial. Free text cannot settle sequence deterministically,
+and the rules path is correctly forbidden from calling a model, so there is
+no route from the current intake to a defensible "done". That gap is
+Master Controller's, from the original breakdown.
+
+The consequence is worse than a missing feature. An employer describing
+"she gave us a doctor's note after we had already denied the request" is
+describing the precise procedural gap this product exists to spot, and the
+tool answers that the step is satisfied — then suppresses the one internal
+action that would have helped, because the trigger only fires when the
+status is not "done". Confident and inverted is the worst output this
+product can produce.
+
+**Decision: both of QA1's paths, sequenced.** The safety fix lands here.
+The intake question lands in Sprint 8, which is created and must close
+before Sprint 6 renders a checklist to any human. Shipping the inert
+version to users and changing it afterwards is worse than spending the
+sprint first, and the PRD is explicit that this checklist is worth getting
+right ahead of more surface features.
+
+Note that "inert" overstates it. With item 1 no longer claiming "done", the
+internal-action trigger fires correctly, so v1 output becomes "not enough
+information on these three items" plus "request a functional abilities
+form". That is honest triage, not a blank.
+
+14. The "documentation requested before denial" item returns `insufficient-information` in all cases, because no current intake field establishes sequence. Implement this as an **explicit, commented guard naming the reason and referencing Sprint 8** — not as a silent fallthrough, and not by deleting the item. Sprint 8 replaces the guard with a real mapping; a reader must be able to see that this is a known limitation with an owner, not an oversight.
+15. Vitest: a `Situation` whose documentation response describes documentation received *after* a denial must not yield `done`. Use QA1's wording as the fixture — it is the exact failure found in round 1.
+16. Vitest: assert that no checklist item can return `done` for any `Situation` constructible from the current intake surface. This pins the present limitation deliberately, so Sprint 8 removing it is a visible, intentional change rather than a silent behaviour shift.
+17. The internal-action escalation trigger firing as a result of requirement 14 is **intended**, not a regression. Do not add a compensating condition to keep it quiet.
+
 ### Acceptance Criteria
 
 - QA1 confirms by reading imports that the rules modules contain no model call, no network call, and no import of the prose module.
@@ -73,6 +109,9 @@ until Sprint 6).
 - **QA1 inspects the exact object handed to the prose layer and confirms it carries no `narrative`, no raw `facts` text, and no verbatim-derived `triggeredBy` strings.** Personal data reaching a third-party API is a FAIL regardless of how well the rest of the sprint is built.
 - QA1 confirms `insufficient-information` is genuinely distinct from `not-done` in both the type and the logic, including the whitespace case.
 - QA1 confirms an `EscalationTrigger[]` producer exists and splits by `EscalationTriggerKind`.
+- QA1 confirms the requirement 14 guard is explicit and commented, references Sprint 8, and that the checklist item was not deleted to make the problem disappear.
+- QA1 confirms the requirements 15 and 16 tests exist and pass, including the after-denial fixture.
+- QA1 confirms no compensating logic was added to suppress the internal-action trigger.
 - QA1 confirms every identified ground carries traceability to the intake facts that triggered it.
 - QA1 reads the ground rules and confirms no rule asserts a legal conclusion, and greps the diff for liability, likelihood, probability, and percentage language in generated output.
 - QA1 confirms `lib/types.ts` changes are bounded to requirement 12.

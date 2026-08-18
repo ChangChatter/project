@@ -66,7 +66,13 @@ export are Sprint 7 and can be dropped without the product ceasing to work.
 ### Dependencies
 
 - Blocks: Sprint 7.
-- Blocked by: Sprints 2, 4, and 5.
+- Blocked by: Sprints 2, 4, 5, **and 8**. Sprint 8 adds the structured intake
+  questions that let the duty-to-accommodate checklist reach `done` and
+  `not-done` at all. Until it lands, every checklist item returns
+  `insufficient-information` by design (Sprint 5 Amendment 1), and this
+  sprint would render a checklist that can only say "I don't know" — the
+  PRD's most legally substantive feature, shown to a human for the first
+  time, saying nothing. Run Sprint 8 first.
 - External: Chang's review of Sprint 5's rules output before this is shown to anyone outside the workshop, and the PRD's open question on whether a liability/disclaimer review is required before real-situation use. Requirement 6's wording is a candidate legal artifact, not just copy — if that review is happening, its output lands here.
 
 ### Risks & Mitigations

@@ -1,5 +1,5 @@
 {
-  "next_id": 8,
+  "next_id": 9,
   "sprints": {
     "1": {
       "title": "App skeleton, domain types, and deployed disclaimer shell",
@@ -28,8 +28,8 @@
     "5": {
       "title": "Rules-based ground and duty spotter with procedural checklist",
       "epic": "Analysis",
-      "status": "todo",
-      "file": "docs/sprints/1-todo/sprint-5_rules-based-ground-and-duty-spotter-with-procedural-checklist.md"
+      "status": "in_progress",
+      "file": "docs/sprints/2-in-progress/sprint-5_rules-based-ground-and-duty-spotter-with-procedural-checklist.md"
     },
     "6": {
       "title": "Issue guide output, acknowledgment gate, and escalation triggers",
@@ -42,6 +42,12 @@
       "epic": "Verified Foundation",
       "status": "todo",
       "file": "docs/sprints/1-todo/sprint-7_swap-verified-bc-hrt-case-data-into-the-seed-library.md"
+    },
+    "8": {
+      "title": "Structured duty-to-accommodate intake questions",
+      "epic": "Intake",
+      "status": "todo",
+      "file": "docs/sprints/1-todo/sprint-8_structured-duty-to-accommodate-intake-questions.md"
     }
   }
 }
