@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { RequestStatusAnswer } from "./types";
 import {
   MIN_DOCUMENTATION_LENGTH,
   MIN_EMPLOYER_ACTION_LENGTH,
@@ -7,6 +8,7 @@ import {
   toNarrative,
   validateConcerns,
   validatePrompt,
+  visibleProceduralQuestions,
 } from "./intake-validation";
 
 describe("validatePrompt", () => {
@@ -84,5 +86,33 @@ describe("toNarrative", () => {
       { reported: true as const, text: "third" },
     ];
     expect(toNarrative(facts)).toBe("first\n\nthird");
+  });
+});
+
+describe("visibleProceduralQuestions", () => {
+  const nonDenialAnswers: (RequestStatusAnswer | null)[] = [
+    "agreed",
+    "pending",
+    "no-request",
+    "not-sure",
+    null,
+  ];
+
+  it("Sprint 8 requirement 10: the documentation-timing question is not visible when no denial is indicated", () => {
+    for (const requestStatus of nonDenialAnswers) {
+      expect(visibleProceduralQuestions(requestStatus).documentationTiming).toBe(false);
+    }
+  });
+
+  it("shows the documentation-timing question once the request has been denied", () => {
+    expect(visibleProceduralQuestions("denied").documentationTiming).toBe(true);
+  });
+
+  it("Sprint 8 requirement 22: alternatives-explored and written-record are visible for every Q0 answer, including no request has been made", () => {
+    for (const requestStatus of [...nonDenialAnswers, "denied" as const]) {
+      const visibility = visibleProceduralQuestions(requestStatus);
+      expect(visibility.alternativesExplored).toBe(true);
+      expect(visibility.writtenRecord).toBe(true);
+    }
   });
 });

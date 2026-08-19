@@ -14,6 +14,12 @@ function fixtureSituation(overrides: Partial<Situation> = {}): Situation {
     concerns: ["medical-absence"],
     narrative: "",
     facts: [{ reported: false }, { reported: false }, { reported: false }],
+    dutyToAccommodate: {
+      requestStatus: "not-sure",
+      documentationTiming: null,
+      alternativesExplored: "not-sure",
+      writtenRecord: "not-sure",
+    },
     ...overrides,
   };
 }

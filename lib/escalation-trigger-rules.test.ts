@@ -14,6 +14,12 @@ function fixtureSituation(overrides: Partial<Situation> = {}): Situation {
     concerns: ["medical-absence"],
     narrative: "",
     facts: [{ reported: false }, { reported: false }, { reported: false }],
+    dutyToAccommodate: {
+      requestStatus: "not-sure",
+      documentationTiming: null,
+      alternativesExplored: "not-sure",
+      writtenRecord: "not-sure",
+    },
     ...overrides,
   };
 }
@@ -66,5 +72,31 @@ describe("identifyEscalationTriggers", () => {
     expect(
       triggers.some((t) => t.kind === "internal-action" && t.label.includes("functional abilities")),
     ).toBe(true);
+  });
+
+  it("Sprint 8 requirement 13: fires for a not-done status but not for a done status", () => {
+    const nonCompliant = identifyEscalationTriggers(fixtureSituation(), [
+      { id: "documentation-requested", label: "x", status: "not-done" },
+    ]);
+    expect(
+      nonCompliant.some((t) => t.kind === "internal-action" && t.label.includes("functional abilities")),
+    ).toBe(true);
+
+    // A fully compliant, otherwise-quiet situation (no complaint lodged,
+    // no termination under consideration) now correctly produces an
+    // empty trigger list — Sprint 6 requirement 4's standing counsel
+    // trigger provides the "at least one" guarantee at render time.
+    const compliant = identifyEscalationTriggers(fixtureSituation(), [
+      { id: "documentation-requested", label: "x", status: "done" },
+    ]);
+    expect(compliant).toEqual([]);
+  });
+
+  it("Sprint 8 requirement 20: does not fire when documentation-requested is not-applicable", () => {
+    const triggers = identifyEscalationTriggers(fixtureSituation(), [
+      { id: "documentation-requested", label: "x", status: "not-applicable" },
+    ]);
+
+    expect(triggers.some((t) => t.kind === "internal-action")).toBe(false);
   });
 });

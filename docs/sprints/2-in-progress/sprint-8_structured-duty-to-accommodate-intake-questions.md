@@ -2,7 +2,7 @@
 id: 8
 title: "Structured duty-to-accommodate intake questions"
 epic: "Intake"
-status: todo
+status: in_progress
 created: 2026-08-18T00:00:00+00:00
 ---
 
@@ -49,7 +49,7 @@ only say "I don't know" does not deliver that.
 7. The requirement 15 after-denial fixture from Sprint 5 still passes, now returning `not-done` rather than `insufficient-information`: an employer who denied first and received documentation afterwards has a real procedural gap, and the tool should say so.
 8. Existing Sprint 3 intake behaviour is preserved: per-prompt validation, the "nothing yet" affordance, back-navigation without data loss, keyboard navigability, labelled inputs, and `role="alert"` / `aria-describedby` / `aria-invalid` on the new questions as well.
 9. Changes to `lib/types.ts` are bounded to the new answer unions and the `Situation` / `IntakeMetadata` fields carrying them. No other domain type changes shape.
-10. Vitest coverage: each checklist item returning each of its three states; the conditional question not appearing when no denial is indicated; a "not sure" answer producing `insufficient-information` and never `not-done`; and the Sprint 5 after-denial fixture now returning `not-done`.
+10. Vitest coverage: each checklist item returning each of its states; a "not sure" answer producing `insufficient-information` and never `not-done`; and the Sprint 5 after-denial fixture now returning `not-done`. **Question visibility is tested through the requirement 23 pure function, not by rendering a component.**
 
 ### Pre-review adjustments — 2026-08-18, against Sprint 5 as shipped
 
@@ -143,7 +143,9 @@ review pass. Do not implement the stronger version now.
 
 21. Requirement 9's bound widens to include `ProceduralCheckStatus`. `lib/types.ts` changes are bounded to the new answer unions, the `Situation` fields carrying them, and this status member. Nothing else.
 
-22. Vitest additions: documentation-requested returning `not-applicable` when Q1 is not shown; Q0 = *not sure* yielding `insufficient-information` and never `not-applicable`; alternatives-explored and analysis-documented **never** returning `not-applicable` for any input; the internal-action trigger absent when the documentation item is `not-applicable`; and Q2 and Q3 rendering for every Q0 answer, including *no request has been made*.
+22. Vitest additions: documentation-requested returning `not-applicable` when Q1 is not shown; Q0 = *not sure* yielding `insufficient-information` and never `not-applicable`; alternatives-explored and analysis-documented **never** returning `not-applicable` for any input; the internal-action trigger absent when the documentation item is `not-applicable`; and — via the requirement 23 function, not a render test — Q2 and Q3 being visible for every Q0 answer, including *no request has been made*.
+
+23. **Question visibility is a pure function, not a render-time conditional.** Export a named function from `lib/` — e.g. `visibleProceduralQuestions(q0Answer)` — returning which of Q1/Q2/Q3 to show. The component consumes it and does nothing else with visibility. This is how every other decision in this codebase is structured (matching, the bridge, ground rules, validation), it is what QA1 can audit by reading, and it means the requirement 10 and 22 visibility cases are ordinary unit tests. **Do not add `@testing-library/react`, `jsdom`, or `happy-dom`** — see the decision recorded in CLAUDE.md.
 
 ### Acceptance Criteria
 
@@ -166,11 +168,18 @@ review pass. Do not implement the stronger version now.
 - QA1 confirms the internal-action trigger does **not** fire when the documentation item is `not-applicable`.
 - QA1 confirms `lib/types.ts` changes are bounded to requirement 21.
 - QA1 runs the Vitest suite and confirms requirement 10's cases exist and pass.
-- GroundTruth completes intake answering the new questions as a **compliant** employer — documentation requested before denial, alternatives explored, analysis written down — and confirms the checklist reports `done` on those items rather than "insufficient information".
-- GroundTruth completes intake as a **non-compliant** employer — denied first, documentation after — and confirms the checklist reports the gap, and that an escalation trigger appears.
-- GroundTruth answers "not sure" throughout and confirms the checklist reports missing information and **never** asserts the employer failed a step.
-- GroundTruth confirms the new questions are keyboard-navigable, labelled, and announce validation errors to assistive technology.
-- GroundTruth confirms the Sprint 3 flow still works end to end and the disclaimer banner is present throughout.
+**GroundTruth** — this sprint ships intake UI, which is real and testable, but
+**not** the checklist output, which Sprint 6 renders. The three criteria that
+required a rendered checklist have moved to Sprint 6. Verify what exists:
+
+- The four new questions render in step 3 with the requirement 16 wording and options, character for character, including Q2's helper text.
+- Q1 appears only after Q0 = "it has been turned down", and disappears if Q0 is changed to any other answer.
+- Q2 and Q3 render for every Q0 answer, including "No request has been made".
+- Every new question offers its "Not sure / I don't have that information" option and it is selectable.
+- The new questions are keyboard-navigable, labelled, and announce validation errors to assistive technology.
+- The intake is still three steps, labelled "Step N of 3".
+- The Sprint 3 flow still works end to end — per-prompt validation, the "nothing yet" affordance, back-navigation preserving data — and the disclaimer banner is present throughout.
+- **No checklist, grounds, or trigger output is user-visible.** Rendering belongs to Sprint 6; if analysis output has appeared, that is a scope violation and a FAIL.
 
 ### Out of Scope
 
@@ -193,6 +202,6 @@ review pass. Do not implement the stronger version now.
 
 - Questions are modelled as booleans because it is simpler, silently recreating the two-state collapse this sprint exists to fix — requirement 3 forbids it and QA1 fails the sprint on any boolean answer field.
 - A "not sure" answer is mapped to `not-done`, converting the employer's uncertainty into an assertion about their conduct — requirement 2, tested in requirement 10, and checked live by GroundTruth answering "not sure" throughout.
-- The intake becomes long enough that employers abandon it — requirement 4's conditional display keeps irrelevant questions off screen; GroundTruth walks the full flow in all three postures.
+- The intake becomes long enough that employers abandon it — only Q1 is conditional (requirement 19), so length is real; GroundTruth walks the full flow and Chang sees it rendered in Sprint 6.
 - Question wording leads the employer toward the answer that makes them look compliant — flagged as an open external dependency needing Chang; no gate can catch it.
 - Sprint 5's limitation test is quietly edited rather than deliberately removed, losing the record that this was a known gap — requirement 6 and a matching acceptance criterion make its removal explicit.

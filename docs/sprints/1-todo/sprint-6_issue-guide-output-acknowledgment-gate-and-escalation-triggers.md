@@ -49,6 +49,10 @@ export are Sprint 7 and can be dropped without the product ceasing to work.
 - GroundTruth completes a full intake, acknowledges, and confirms the guide renders with all four sections present.
 - GroundTruth confirms internal actions and counsel triggers are visually distinguishable at a glance, without reading closely.
 - GroundTruth confirms at least one escalation trigger appears, including on a scenario chosen to be as benign as the intake allows.
+- GroundTruth completes intake as a **compliant** employer — documentation requested before denial, alternatives considered, analysis written down — and confirms the checklist reports `done` on those items rather than "insufficient information". *(Moved from Sprint 8, which has no rendered checklist to test against.)*
+- GroundTruth completes intake as a **non-compliant** employer — denied first, documentation only after — and confirms the checklist reports the gap and an escalation trigger appears. *(Moved from Sprint 8.)*
+- GroundTruth answers "not sure" throughout and confirms the checklist reports missing information and **never** asserts the employer failed a step. *(Moved from Sprint 8.)*
+- GroundTruth confirms a `not-applicable` item reads as "this step does not apply", never as a gap or as unknown.
 - GroundTruth runs a disability/accommodation scenario end to end and confirms a disability ground is identified, with a plain-language explanation. *(Moved here from Sprint 5, which has no UI to test it against.)*
 - GroundTruth runs a scenario with deliberately sparse facts, using the "nothing yet" affordance, and confirms the procedural checklist reports missing information rather than asserting the employer failed a step. *(Moved from Sprint 5.)*
 - GroundTruth confirms no output anywhere predicts an outcome, states a likelihood, or gives a percentage. *(Moved from Sprint 5.)*

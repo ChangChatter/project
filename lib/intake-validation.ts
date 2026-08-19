@@ -1,4 +1,4 @@
-import type { ConcernCategory, FactPromptResponse } from "./types";
+import type { ConcernCategory, FactPromptResponse, RequestStatusAnswer } from "./types";
 
 /**
  * Minimum length (trimmed, in characters) for the "what happened" prompt
@@ -84,4 +84,25 @@ export function toNarrative(facts: readonly FactPromptResponse[]): string {
     .filter((fact): fact is Extract<FactPromptResponse, { reported: true }> => fact.reported)
     .map((fact) => fact.text)
     .join("\n\n");
+}
+
+export interface VisibleProceduralQuestions {
+  documentationTiming: boolean;
+  alternativesExplored: boolean;
+  writtenRecord: boolean;
+}
+
+/**
+ * Which Step 3 duty-to-accommodate questions to show, given the Q0
+ * (request status) answer. Pure — the component consumes this and makes
+ * no other visibility decision of its own (Sprint 8 requirement 23).
+ */
+export function visibleProceduralQuestions(
+  requestStatus: RequestStatusAnswer | null,
+): VisibleProceduralQuestions {
+  return {
+    documentationTiming: requestStatus === "denied",
+    alternativesExplored: true,
+    writtenRecord: true,
+  };
 }

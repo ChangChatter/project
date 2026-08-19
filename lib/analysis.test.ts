@@ -18,6 +18,12 @@ function fixtureSituation(overrides: Partial<Situation> = {}): Situation {
       { reported: false },
       { reported: true, text: "Considering termination of employment." },
     ],
+    dutyToAccommodate: {
+      requestStatus: "not-sure",
+      documentationTiming: null,
+      alternativesExplored: "not-sure",
+      writtenRecord: "not-sure",
+    },
     ...overrides,
   };
 }
@@ -28,18 +34,5 @@ describe("analyzeSituation", () => {
     const first = analyzeSituation(situation);
     const second = analyzeSituation(situation);
     expect(second).toEqual(first);
-  });
-
-  it("Amendment 1 requirement 17: the internal-action trigger fires on every result, not suppressed", () => {
-    // documentation-requested is insufficient-information for every
-    // constructible Situation since Amendment 1 requirement 14 — this is
-    // intended to make the internal-action trigger fire more often, not
-    // a regression to compensate for.
-    const result = analyzeSituation(fixtureSituation());
-    expect(
-      result.escalationTriggers.some(
-        (t) => t.kind === "internal-action" && t.label === "Request a functional abilities form",
-      ),
-    ).toBe(true);
   });
 });

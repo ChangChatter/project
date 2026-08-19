@@ -21,15 +21,13 @@ function mentionsTermination(text: string): boolean {
  *
  * One internal-action trigger, tied to this sprint's own procedural
  * checklist rather than the PRD's counsel examples: if the
- * "documentation-requested" item is not `done`, suggest requesting a
- * functional abilities form — Sprint 6 requirement 3's own worked
- * example for an internal action.
- *
- * Since Sprint 5 Amendment 1 requirement 14, that item is
- * `insufficient-information` for every constructible `Situation`, so
- * this trigger now fires on every result. That is intended, per
- * Amendment 1 requirement 17 — do not add a compensating condition here
- * to keep it quiet again.
+ * "documentation-requested" item is `not-done` or
+ * `insufficient-information`, suggest requesting a functional abilities
+ * form — Sprint 6 requirement 3's own worked example for an internal
+ * action. Deliberately excludes `not-applicable` (Sprint 8 requirement
+ * 20): an employer who never had a request to deny has no accommodation
+ * question to clarify, so firing this trigger there would be noise, not
+ * help.
  */
 export function identifyEscalationTriggers(
   situation: Situation,
@@ -60,7 +58,11 @@ export function identifyEscalationTriggers(
   const documentationItem = proceduralChecklist.find(
     (item) => item.id === "documentation-requested",
   );
-  if (documentationItem && documentationItem.status !== "done") {
+  if (
+    documentationItem &&
+    (documentationItem.status === "not-done" ||
+      documentationItem.status === "insufficient-information")
+  ) {
     triggers.push({
       kind: "internal-action",
       label: "Request a functional abilities form",

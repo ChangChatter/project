@@ -421,6 +421,15 @@ the already-decided result into plain language.
   tag-matching logic. That logic is the product, a wrong ground or a
   missed match is the failure mode that matters, and it's pure enough to
   test directly.
+- **No component render tests either, and no `@testing-library/react`,
+  `jsdom`, or `happy-dom`.** The rule that resolves this: *what to show is
+  logic; that it actually showed is a browser fact.* Conditional display,
+  ordering, enablement, and validity are decisions — extract them into named
+  pure functions in `lib/` and unit-test those. Whether the DOM then
+  reflected the decision is GroundTruth's, in a real browser, which is
+  stronger evidence than a simulated one. A render test would mostly be
+  testing React. This came up on Sprint 8, whose visibility rules became
+  `visibleProceduralQuestions()` rather than a new test stack.
 - **No in-repo end-to-end tests.** GroundTruth's live browser testing
   covers that gate, and duplicating it in-repo means maintaining two
   answers to the same question.

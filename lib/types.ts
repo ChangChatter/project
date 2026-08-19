@@ -73,6 +73,46 @@ export interface IntakeMetadata {
  */
 export type FactPromptResponse = { reported: true; text: string } | { reported: false };
 
+/** Q0 — whether an accommodation request has been made, and its outcome. Sprint 8 requirement 16. */
+export type RequestStatusAnswer = "agreed" | "denied" | "pending" | "no-request" | "not-sure";
+
+/**
+ * Q1 — when documentation was requested relative to a denial. Only ever
+ * answerable when `RequestStatusAnswer` is `"denied"` — Q1 is the sole
+ * conditional question (Sprint 8 requirement 19).
+ */
+export type DocumentationTimingAnswer =
+  | "before-decision"
+  | "after-decision"
+  | "never-requested"
+  | "not-sure";
+
+/** Q2 — whether alternative working arrangements were considered. Sprint 8 requirement 16. */
+export type AlternativesExploredAnswer = "yes" | "no" | "not-sure";
+
+/** Q3 — whether the accommodation assessment was recorded in writing. Sprint 8 requirement 16. */
+export type WrittenRecordAnswer = "yes" | "no" | "not-sure";
+
+/**
+ * Answers to the four structured duty-to-accommodate questions (Q0-Q3),
+ * collected in intake step 3 alongside the narrative prompts. Closed
+ * unions, not booleans — a boolean cannot carry the third
+ * ("not sure") state, which is the specific failure Sprint 8 exists to
+ * correct. See Sprint 8 requirements 1-3, 16.
+ */
+export interface DutyToAccommodateAnswers {
+  requestStatus: RequestStatusAnswer;
+  /**
+   * `null` whenever Q1 isn't shown — i.e. whenever `requestStatus` isn't
+   * `"denied"`, including `"not-sure"`. Never used to distinguish *why*
+   * it's absent; the rules that consume this read `requestStatus`
+   * directly for that (Sprint 8 requirement 18).
+   */
+  documentationTiming: DocumentationTimingAnswer | null;
+  alternativesExplored: AlternativesExploredAnswer;
+  writtenRecord: WrittenRecordAnswer;
+}
+
 /**
  * The validated output of the full three-step intake flow (metadata,
  * concern selection, guided fact narrative). Every later analysis step
@@ -101,6 +141,8 @@ export interface Situation {
    * prompt, never filtered — per Sprint 3 Amendment 2 requirement 14.
    */
   facts: [FactPromptResponse, FactPromptResponse, FactPromptResponse];
+  /** The four structured duty-to-accommodate answers — Sprint 8. */
+  dutyToAccommodate: DutyToAccommodateAnswers;
 }
 
 /**
@@ -190,12 +232,22 @@ export interface CodeGround {
 export type IdentifiedGround = CodeGround & { ground: V1SpottedGround };
 
 /**
- * The three-state status of a single duty-to-accommodate procedural
- * line item. Distinguishes "not done" (established by the intake) from
+ * The four-state status of a single duty-to-accommodate procedural line
+ * item. Distinguishes "not done" (established by the intake) from
  * "not enough information" (never asserted as a gap the intake didn't
- * actually establish).
+ * actually establish) — and, since Sprint 8 requirement 17, from
+ * "not applicable" (the item's precondition never occurred at all).
+ * `not-applicable` and `insufficient-information` are deliberately
+ * distinct: mapping "no request was ever turned down" to
+ * `insufficient-information` would claim ignorance of something that is
+ * actually known, the same collapse the three-state design originally
+ * existed to prevent.
  */
-export type ProceduralCheckStatus = "done" | "not-done" | "insufficient-information";
+export type ProceduralCheckStatus =
+  | "done"
+  | "not-done"
+  | "insufficient-information"
+  | "not-applicable";
 
 /**
  * One duty-to-accommodate procedural line item produced by the rules

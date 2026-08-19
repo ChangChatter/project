@@ -2,9 +2,13 @@
 
 import { useId, useState } from "react";
 import type {
+  AlternativesExploredAnswer,
   ConcernCategory,
+  DocumentationTimingAnswer,
   EmploymentStatus,
+  RequestStatusAnswer,
   Situation,
+  WrittenRecordAnswer,
 } from "@/lib/types";
 import {
   MIN_DOCUMENTATION_LENGTH,
@@ -14,6 +18,7 @@ import {
   toNarrative,
   validateConcerns,
   validatePrompt,
+  visibleProceduralQuestions,
 } from "@/lib/intake-validation";
 
 const EMPLOYMENT_STATUS_OPTIONS: { value: EmploymentStatus; label: string }[] = [
@@ -30,6 +35,37 @@ const CONCERN_OPTIONS: { value: ConcernCategory; label: string }[] = [
 ];
 
 const STEP_LABELS = ["Context and metadata", "Primary concern", "Fact narrative"];
+
+// Sprint 8 requirement 16: exact wording and options, reviewed for
+// leading/ambiguous phrasing. Wording changes are Master Controller's,
+// not Dev Team's.
+
+const REQUEST_STATUS_OPTIONS: { value: RequestStatusAnswer; label: string }[] = [
+  { value: "agreed", label: "Yes — and it has been agreed to" },
+  { value: "denied", label: "Yes — and it has been turned down" },
+  { value: "pending", label: "Yes — and no decision has been made yet" },
+  { value: "no-request", label: "No request has been made" },
+  { value: "not-sure", label: "Not sure / I don't have that information" },
+];
+
+const DOCUMENTATION_TIMING_OPTIONS: { value: DocumentationTimingAnswer; label: string }[] = [
+  { value: "before-decision", label: "Before the decision was made" },
+  { value: "after-decision", label: "Only after the decision was made" },
+  { value: "never-requested", label: "It was never requested" },
+  { value: "not-sure", label: "Not sure / I don't have that information" },
+];
+
+const ALTERNATIVES_EXPLORED_OPTIONS: { value: AlternativesExploredAnswer; label: string }[] = [
+  { value: "yes", label: "Yes, other options were considered" },
+  { value: "no", label: "No, other options were not considered" },
+  { value: "not-sure", label: "Not sure / I don't have that information" },
+];
+
+const WRITTEN_RECORD_OPTIONS: { value: WrittenRecordAnswer; label: string }[] = [
+  { value: "yes", label: "Yes, there is a written record" },
+  { value: "no", label: "No, nothing was written down" },
+  { value: "not-sure", label: "Not sure / I don't have that information" },
+];
 
 type Step = 1 | 2 | 3;
 
@@ -64,6 +100,16 @@ export default function IntakeFlow() {
   const [employerActionError, setEmployerActionError] = useState<string | null>(
     null,
   );
+
+  const [requestStatus, setRequestStatus] = useState<RequestStatusAnswer | null>(null);
+  const [documentationTiming, setDocumentationTiming] = useState<DocumentationTimingAnswer | null>(
+    null,
+  );
+  const [alternativesExplored, setAlternativesExplored] = useState<AlternativesExploredAnswer | null>(
+    null,
+  );
+  const [writtenRecord, setWrittenRecord] = useState<WrittenRecordAnswer | null>(null);
+  const [dutyToAccommodateError, setDutyToAccommodateError] = useState<string | null>(null);
 
   function updateEmploymentStatus(value: EmploymentStatus) {
     setEmploymentStatus(value);
@@ -115,6 +161,26 @@ export default function IntakeFlow() {
   function toggleEmployerActionNA(value: boolean) {
     setEmployerActionNA(value);
     setEmployerActionError(null);
+  }
+
+  function updateRequestStatus(value: RequestStatusAnswer) {
+    setRequestStatus(value);
+    setDutyToAccommodateError(null);
+  }
+
+  function updateDocumentationTiming(value: DocumentationTimingAnswer) {
+    setDocumentationTiming(value);
+    setDutyToAccommodateError(null);
+  }
+
+  function updateAlternativesExplored(value: AlternativesExploredAnswer) {
+    setAlternativesExplored(value);
+    setDutyToAccommodateError(null);
+  }
+
+  function updateWrittenRecord(value: WrittenRecordAnswer) {
+    setWrittenRecord(value);
+    setDutyToAccommodateError(null);
   }
 
   function goToStep2() {
@@ -174,13 +240,32 @@ export default function IntakeFlow() {
       return;
     }
 
+    const proceduralQuestionVisibility = visibleProceduralQuestions(requestStatus);
+
+    const missingDutyToAccommodate: string[] = [];
+    if (!requestStatus) missingDutyToAccommodate.push("request status");
+    if (proceduralQuestionVisibility.documentationTiming && !documentationTiming) {
+      missingDutyToAccommodate.push("documentation timing");
+    }
+    if (!alternativesExplored) missingDutyToAccommodate.push("alternatives considered");
+    if (!writtenRecord) missingDutyToAccommodate.push("written record");
+    if (missingDutyToAccommodate.length > 0) {
+      setDutyToAccommodateError(`Missing: ${missingDutyToAccommodate.join(", ")}.`);
+      return;
+    }
+    setDutyToAccommodateError(null);
+
     if (
       !employmentStatus ||
       formalComplaintsLodged === null ||
-      concerns.length === 0
+      concerns.length === 0 ||
+      !requestStatus ||
+      !alternativesExplored ||
+      !writtenRecord
     ) {
       // Not reachable today — steps 1 and 2 already gate progression past
-      // themselves. Surfaced rather than silently returning so this stays
+      // themselves, and the check above already gates step 3's structured
+      // questions. Surfaced rather than silently returning so this stays
       // safe once step-jumping or resume (Sprint 7) can reach step 3 with
       // an earlier step incomplete.
       setEmployerActionError(
@@ -209,6 +294,18 @@ export default function IntakeFlow() {
       concerns: [firstConcern, ...restConcerns],
       narrative,
       facts,
+      dutyToAccommodate: {
+        requestStatus,
+        // Q1 is the sole conditional question (Sprint 8 requirement 19) —
+        // null whenever visibleProceduralQuestions says it isn't shown,
+        // regardless of any answer left over from a prior "denied"
+        // selection the employer has since changed away from.
+        documentationTiming: proceduralQuestionVisibility.documentationTiming
+          ? documentationTiming
+          : null,
+        alternativesExplored,
+        writtenRecord,
+      },
     });
   }
 
@@ -276,6 +373,15 @@ export default function IntakeFlow() {
           employerActionNA={employerActionNA}
           onEmployerActionNAChange={toggleEmployerActionNA}
           employerActionError={employerActionError}
+          requestStatus={requestStatus}
+          onRequestStatusChange={updateRequestStatus}
+          documentationTiming={documentationTiming}
+          onDocumentationTimingChange={updateDocumentationTiming}
+          alternativesExplored={alternativesExplored}
+          onAlternativesExploredChange={updateAlternativesExplored}
+          writtenRecord={writtenRecord}
+          onWrittenRecordChange={updateWrittenRecord}
+          dutyToAccommodateError={dutyToAccommodateError}
           onBack={() => setStep(2)}
           onSubmit={submit}
         />
@@ -502,6 +608,49 @@ function NarrativePrompt({
   );
 }
 
+function RadioQuestion<T extends string>({
+  name,
+  legend,
+  helperText,
+  options,
+  value,
+  onChange,
+  describedById,
+  invalid,
+}: {
+  name: string;
+  legend: string;
+  helperText?: string;
+  options: { value: T; label: string }[];
+  value: T | null;
+  onChange: (value: T) => void;
+  /** Links this fieldset to a shared error message rendered elsewhere. */
+  describedById?: string;
+  invalid?: boolean;
+}) {
+  return (
+    <fieldset role="radiogroup" aria-invalid={invalid} aria-describedby={describedById}>
+      <legend className="font-medium text-zinc-900 dark:text-zinc-50">{legend}</legend>
+      {helperText && (
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{helperText}</p>
+      )}
+      <div className="mt-2 flex flex-col gap-2">
+        {options.map((option) => (
+          <label key={option.value} className="flex items-center gap-2">
+            <input
+              type="radio"
+              name={name}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function StepNarrative({
   whatHappened,
   onWhatHappenedChange,
@@ -518,6 +667,15 @@ function StepNarrative({
   employerActionNA,
   onEmployerActionNAChange,
   employerActionError,
+  requestStatus,
+  onRequestStatusChange,
+  documentationTiming,
+  onDocumentationTimingChange,
+  alternativesExplored,
+  onAlternativesExploredChange,
+  writtenRecord,
+  onWrittenRecordChange,
+  dutyToAccommodateError,
   onBack,
   onSubmit,
 }: {
@@ -536,9 +694,27 @@ function StepNarrative({
   employerActionNA: boolean;
   onEmployerActionNAChange: (value: boolean) => void;
   employerActionError: string | null;
+  requestStatus: RequestStatusAnswer | null;
+  onRequestStatusChange: (value: RequestStatusAnswer) => void;
+  documentationTiming: DocumentationTimingAnswer | null;
+  onDocumentationTimingChange: (value: DocumentationTimingAnswer) => void;
+  alternativesExplored: AlternativesExploredAnswer | null;
+  onAlternativesExploredChange: (value: AlternativesExploredAnswer) => void;
+  writtenRecord: WrittenRecordAnswer | null;
+  onWrittenRecordChange: (value: WrittenRecordAnswer) => void;
+  dutyToAccommodateError: string | null;
   onBack: () => void;
   onSubmit: () => void;
 }) {
+  const dutyToAccommodateErrorId = useId();
+  const proceduralQuestionVisibility = visibleProceduralQuestions(requestStatus);
+  const requestStatusInvalid = dutyToAccommodateError !== null && requestStatus === null;
+  const documentationTimingInvalid =
+    dutyToAccommodateError !== null && documentationTiming === null;
+  const alternativesExploredInvalid =
+    dutyToAccommodateError !== null && alternativesExplored === null;
+  const writtenRecordInvalid = dutyToAccommodateError !== null && writtenRecord === null;
+
   return (
     <div className="mt-8 flex flex-col gap-6">
       <NarrativePrompt
@@ -566,6 +742,69 @@ function StepNarrative({
         error={employerActionError}
       />
 
+      <div>
+        <h2 className="font-medium text-zinc-900 dark:text-zinc-50">
+          A few more specific questions about the accommodation request
+        </h2>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          These help the checklist below say more than &ldquo;not enough
+          information.&rdquo;
+        </p>
+      </div>
+
+      <RadioQuestion
+        name="requestStatus"
+        legend="Has this employee asked for a change to their job, schedule, duties, or working conditions?"
+        options={REQUEST_STATUS_OPTIONS}
+        value={requestStatus}
+        onChange={onRequestStatusChange}
+        describedById={dutyToAccommodateError ? dutyToAccommodateErrorId : undefined}
+        invalid={requestStatusInvalid}
+      />
+
+      {proceduralQuestionVisibility.documentationTiming && (
+        <RadioQuestion
+          name="documentationTiming"
+          legend="When was medical information or a functional abilities form requested, if at all?"
+          options={DOCUMENTATION_TIMING_OPTIONS}
+          value={documentationTiming}
+          onChange={onDocumentationTimingChange}
+          describedById={dutyToAccommodateError ? dutyToAccommodateErrorId : undefined}
+          invalid={documentationTimingInvalid}
+        />
+      )}
+
+      <RadioQuestion
+        name="alternativesExplored"
+        legend="Were other options considered — such as different duties, adjusted hours, equipment, or a different location?"
+        helperText="This is about what has happened so far, not whether it was the right call."
+        options={ALTERNATIVES_EXPLORED_OPTIONS}
+        value={alternativesExplored}
+        onChange={onAlternativesExploredChange}
+        describedById={dutyToAccommodateError ? dutyToAccommodateErrorId : undefined}
+        invalid={alternativesExploredInvalid}
+      />
+
+      <RadioQuestion
+        name="writtenRecord"
+        legend="Is there a written record of how this request was assessed — for example notes, an email, or a file entry?"
+        options={WRITTEN_RECORD_OPTIONS}
+        value={writtenRecord}
+        onChange={onWrittenRecordChange}
+        describedById={dutyToAccommodateError ? dutyToAccommodateErrorId : undefined}
+        invalid={writtenRecordInvalid}
+      />
+
+      {dutyToAccommodateError && (
+        <p
+          id={dutyToAccommodateErrorId}
+          role="alert"
+          className="text-sm text-red-700 dark:text-red-400"
+        >
+          {dutyToAccommodateError}
+        </p>
+      )}
+
       <div className="flex justify-between">
         <button
           type="button"
@@ -584,6 +823,10 @@ function StepNarrative({
       </div>
     </div>
   );
+}
+
+function labelFor<T extends string>(options: { value: T; label: string }[], value: T): string {
+  return options.find((option) => option.value === value)?.label ?? value;
 }
 
 function IntakeComplete({ situation }: { situation: Situation }) {
@@ -628,6 +871,39 @@ function IntakeComplete({ situation }: { situation: Situation }) {
           <dt className="font-medium text-zinc-900 dark:text-zinc-50">Narrative</dt>
           <dd className="whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
             {situation.narrative || "(nothing reported)"}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Request status</dt>
+          <dd className="text-zinc-700 dark:text-zinc-300">
+            {labelFor(REQUEST_STATUS_OPTIONS, situation.dutyToAccommodate.requestStatus)}
+          </dd>
+        </div>
+        {situation.dutyToAccommodate.documentationTiming && (
+          <div>
+            <dt className="font-medium text-zinc-900 dark:text-zinc-50">
+              Documentation timing
+            </dt>
+            <dd className="text-zinc-700 dark:text-zinc-300">
+              {labelFor(
+                DOCUMENTATION_TIMING_OPTIONS,
+                situation.dutyToAccommodate.documentationTiming,
+              )}
+            </dd>
+          </div>
+        )}
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">
+            Alternatives explored
+          </dt>
+          <dd className="text-zinc-700 dark:text-zinc-300">
+            {labelFor(ALTERNATIVES_EXPLORED_OPTIONS, situation.dutyToAccommodate.alternativesExplored)}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-zinc-900 dark:text-zinc-50">Written record</dt>
+          <dd className="text-zinc-700 dark:text-zinc-300">
+            {labelFor(WRITTEN_RECORD_OPTIONS, situation.dutyToAccommodate.writtenRecord)}
           </dd>
         </div>
       </dl>

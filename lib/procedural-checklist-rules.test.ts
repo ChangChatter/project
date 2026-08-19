@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Situation } from "./types";
+import type { DutyToAccommodateAnswers, Situation } from "./types";
 import { buildProceduralChecklist } from "./procedural-checklist-rules";
 
 function fixtureSituation(overrides: Partial<Situation> = {}): Situation {
@@ -14,128 +14,104 @@ function fixtureSituation(overrides: Partial<Situation> = {}): Situation {
     concerns: ["medical-absence"],
     narrative: "",
     facts: [{ reported: false }, { reported: false }, { reported: false }],
+    dutyToAccommodate: {
+      requestStatus: "not-sure",
+      documentationTiming: null,
+      alternativesExplored: "not-sure",
+      writtenRecord: "not-sure",
+    },
     ...overrides,
   };
 }
 
-describe("buildProceduralChecklist", () => {
-  it("yields insufficient-information, never not-done, for every reported: false prompt", () => {
-    const items = buildProceduralChecklist(
-      fixtureSituation({
-        facts: [{ reported: false }, { reported: false }, { reported: false }],
-      }),
-    );
-
-    for (const item of items) {
-      expect(item.status).not.toBe("not-done");
-    }
-    const documentationItem = items.find((item) => item.id === "documentation-requested");
-    expect(documentationItem?.status).toBe("insufficient-information");
+function withAnswers(answers: Partial<DutyToAccommodateAnswers>): Situation {
+  return fixtureSituation({
+    dutyToAccommodate: {
+      requestStatus: "not-sure",
+      documentationTiming: null,
+      alternativesExplored: "not-sure",
+      writtenRecord: "not-sure",
+      ...answers,
+    },
   });
+}
 
-  it("yields insufficient-information for a whitespace-only reported response", () => {
-    const items = buildProceduralChecklist(
-      fixtureSituation({
-        facts: [{ reported: false }, { reported: true, text: "   \n\t  " }, { reported: false }],
-      }),
+function documentationItem(situation: Situation) {
+  return buildProceduralChecklist(situation).find((item) => item.id === "documentation-requested");
+}
+
+describe("buildProceduralChecklist — documentation-requested", () => {
+  it("returns done when documentation was requested before the decision", () => {
+    const item = documentationItem(
+      withAnswers({ requestStatus: "denied", documentationTiming: "before-decision" }),
     );
-
-    const documentationItem = items.find((item) => item.id === "documentation-requested");
-    expect(documentationItem?.status).toBe("insufficient-information");
+    expect(item?.status).toBe("done");
   });
 
   it(
-    "Amendment 1 requirement 15: documentation received after a denial does not yield done",
+    "Sprint 8 requirement 7 (was Sprint 5 requirement 15): documentation received after a denial returns not-done",
     () => {
-      // QA1 round 1's exact wording, used verbatim as the fixture per
-      // Amendment 1 requirement 15 — this was the concrete reachable
-      // failure the finding identified.
-      const items = buildProceduralChecklist(
-        fixtureSituation({
-          facts: [
-            { reported: false },
-            {
-              reported: true,
-              text: "She gave us a doctor's note after we'd already denied the request.",
-            },
-            { reported: false },
-          ],
-        }),
+      // QA1's original wording, carried forward from Sprint 5: "She gave
+      // us a doctor's note after we'd already denied the request."
+      const item = documentationItem(
+        withAnswers({ requestStatus: "denied", documentationTiming: "after-decision" }),
       );
-
-      const documentationItem = items.find((item) => item.id === "documentation-requested");
-      expect(documentationItem?.status).not.toBe("done");
-      expect(documentationItem?.status).toBe("insufficient-information");
+      expect(item?.status).toBe("not-done");
     },
   );
 
-  it("Amendment 1 requirement 16: no item returns done for any constructible Situation", () => {
-    // Pins the present limitation deliberately (Amendment 1 requirement
-    // 16) so Sprint 8 removing it is a visible, intentional change. Sweeps
-    // a representative spread, including the most compliance-favorable
-    // text an employer could plausibly write, since the old (rejected)
-    // "any non-empty text = done" behaviour is exactly what this guards
-    // against reintroducing.
-    const concernOptions: Situation["concerns"][number][] = [
-      "medical-absence",
-      "schedule-flexibility",
-      "interpersonal-conflict",
-      "performance-management",
-    ];
-    const employmentStatusOptions: Situation["metadata"]["employmentStatus"][] = [
-      "active",
-      "suspended",
-      "terminated",
-    ];
-    const factsOptions: Situation["facts"][] = [
-      [{ reported: false }, { reported: false }, { reported: false }],
-      [
-        { reported: true, text: "   " },
-        { reported: true, text: "   " },
-        { reported: true, text: "   " },
-      ],
-      [
-        {
-          reported: true,
-          text: "Documentation was requested before any denial, alternative arrangements were fully explored, and the accommodation analysis was documented in writing.",
-        },
-        {
-          reported: true,
-          text: "Documentation was requested before any denial, alternative arrangements were fully explored, and the accommodation analysis was documented in writing.",
-        },
-        {
-          reported: true,
-          text: "Documentation was requested before any denial, alternative arrangements were fully explored, and the accommodation analysis was documented in writing.",
-        },
-      ],
-    ];
+  it("returns not-done when documentation was never requested despite a denial", () => {
+    const item = documentationItem(
+      withAnswers({ requestStatus: "denied", documentationTiming: "never-requested" }),
+    );
+    expect(item?.status).toBe("not-done");
+  });
 
-    for (const concern of concernOptions) {
-      for (const employmentStatus of employmentStatusOptions) {
-        for (const formalComplaintsLodged of [true, false]) {
-          for (const facts of factsOptions) {
-            const items = buildProceduralChecklist(
-              fixtureSituation({
-                concerns: [concern],
-                metadata: {
-                  province: "BC",
-                  employmentStatus,
-                  tenure: "2 years",
-                  formalComplaintsLodged,
-                  submittedAt: "2026-08-18T00:00:00.000Z",
-                },
-                facts,
-              }),
-            );
-            for (const item of items) {
-              expect(item.status).not.toBe("done");
-            }
-          }
-        }
-      }
+  it("returns insufficient-information when the timing answer is not sure", () => {
+    const item = documentationItem(
+      withAnswers({ requestStatus: "denied", documentationTiming: "not-sure" }),
+    );
+    expect(item?.status).toBe("insufficient-information");
+  });
+
+  it("returns not-applicable when no request was ever denied", () => {
+    for (const requestStatus of ["agreed", "pending", "no-request"] as const) {
+      const item = documentationItem(withAnswers({ requestStatus, documentationTiming: null }));
+      expect(item?.status).toBe("not-applicable");
     }
   });
 
+  it("returns insufficient-information, never not-applicable, when the request status itself is not sure", () => {
+    const item = documentationItem(
+      withAnswers({ requestStatus: "not-sure", documentationTiming: null }),
+    );
+    expect(item?.status).toBe("insufficient-information");
+    expect(item?.status).not.toBe("not-applicable");
+  });
+});
+
+describe("buildProceduralChecklist — alternatives-explored and analysis-documented", () => {
+  it("map yes/no/not-sure to done/not-done/insufficient-information, never not-applicable", () => {
+    const cases: Array<["yes" | "no" | "not-sure", string]> = [
+      ["yes", "done"],
+      ["no", "not-done"],
+      ["not-sure", "insufficient-information"],
+    ];
+    for (const [answer, expected] of cases) {
+      const items = buildProceduralChecklist(
+        withAnswers({ alternativesExplored: answer, writtenRecord: answer }),
+      );
+      const alternatives = items.find((item) => item.id === "alternatives-explored");
+      const analysis = items.find((item) => item.id === "analysis-documented");
+      expect(alternatives?.status).toBe(expected);
+      expect(analysis?.status).toBe(expected);
+      expect(alternatives?.status).not.toBe("not-applicable");
+      expect(analysis?.status).not.toBe("not-applicable");
+    }
+  });
+});
+
+describe("buildProceduralChecklist", () => {
   it("always includes all three requirement-3 line items", () => {
     const items = buildProceduralChecklist(fixtureSituation());
     expect(items.map((item) => item.id).sort()).toEqual([
