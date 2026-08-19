@@ -51,6 +51,100 @@ only say "I don't know" does not deliver that.
 9. Changes to `lib/types.ts` are bounded to the new answer unions and the `Situation` / `IntakeMetadata` fields carrying them. No other domain type changes shape.
 10. Vitest coverage: each checklist item returning each of its three states; the conditional question not appearing when no denial is indicated; a "not sure" answer producing `insufficient-information` and never `not-done`; and the Sprint 5 after-denial fixture now returning `not-done`.
 
+### Pre-review adjustments — 2026-08-18, against Sprint 5 as shipped
+
+Checked against `a91e5b4`. Five items, two of which are real cross-sprint
+problems created by Sprint 5's shipped code rather than by this definition.
+
+**The intake stays three steps.** The PRD specifies a "3-step guided flow"
+and Sprint 3 requirement 1 repeats it; `IntakeFlow.tsx` types the step as
+`1 | 2 | 3` and renders "Step {step} of 3". The structured questions go
+into **step 3**, alongside the existing narrative prompts — they ask what
+the employer has already done, which is what step 3 is about. Do not add a
+fourth step; that silently contradicts two upstream specifications and
+would invalidate GroundTruth's existing "completes all three steps" check.
+
+**Sprint 5 requirement 17 is superseded by this sprint.** That requirement,
+and a matching comment in `lib/escalation-trigger-rules.ts`, say the
+internal-action trigger firing on *every* result is intended and that no
+compensating condition may be added to quiet it. That was correct while
+`documentation-requested` could never be `done`. Once this sprint makes
+`done` reachable, the trigger correctly goes silent for a compliant
+employer — which is the desired behaviour, not a regression, and QA1 will
+otherwise be reading a live instruction that says the opposite.
+
+11. The structured questions are added to **step 3**. `Step` stays `1 | 2 | 3` and the "of 3" label is unchanged.
+
+12. Sprint 5 requirement 17 no longer applies. The internal-action trigger is expected to fire only when `documentation-requested` is not `done`. Update the doc comment in `lib/escalation-trigger-rules.ts` that currently states it "fires on every result" and instructs against quieting it — leaving a stale instruction in the code is how the next reader gets it wrong. Do **not** otherwise change the trigger logic; the condition itself was always right.
+
+13. Vitest, both directions of the transition: a compliant `Situation` (documentation requested before denial) produces **no** internal-action trigger; a non-compliant one still produces it. Note that a fully compliant situation with no formal complaint and no termination under consideration will now produce an **empty** trigger list. That is correct here — Sprint 6 requirement 4's standing counsel trigger provides the "at least one" guarantee at render time, and adding a compensating trigger in this sprint would duplicate it.
+
+14. Remove every artefact of the Sprint 5 limitation, not just the per-item guard comment:
+    - the `eslint-disable-next-line @typescript-eslint/no-unused-vars` above `buildProceduralChecklist` and the note explaining why `situation` is unused — the parameter is used now;
+    - the function-level doc comment stating "All three items are currently `insufficient-information` for every constructible `Situation`";
+    - the per-item comments on all three items, including the two saying no intake signal exists.
+
+15. The new answer fields must **not** be added to the prose payload. Sprint 5 requirement 6's boundary is that the model receives the decided output, never the intake — that holds regardless of whether a given field happens to be non-identifying. `buildProsePayload` takes an `AnalysisResult` and must keep taking only that.
+
+*Note: `ProceduralCheckItem` was finalized by Sprint 5 and needs no change here. Requirement 9's bound covers the new answer unions and the `Situation` fields carrying them.*
+
+### Approved wording and fourth status — 2026-08-18, Chang
+
+Question wording reviewed and approved as drafted. `not-applicable`
+approved as a fourth `ProceduralCheckStatus`. Both land here.
+
+*Noted and deliberately deferred:* whether Q2 should ask if alternatives
+were **discussed with the employee** rather than merely considered. Chang
+weighed it and chose not to block this sprint; it belongs to a later
+review pass. Do not implement the stronger version now.
+
+16. The four questions ship with **exactly this wording and these options**. Wording changes are Master Controller's, not Dev Team's — these were reviewed for leading and ambiguous phrasing, and small edits can undo that.
+
+    **Q0 — Request status** (always shown, step 3)
+    > Has this employee asked for a change to their job, schedule, duties, or working conditions?
+    > - Yes — and it has been agreed to
+    > - Yes — and it has been turned down
+    > - Yes — and no decision has been made yet
+    > - No request has been made
+    > - Not sure / I don't have that information
+
+    **Q1 — Documentation timing** (shown only when Q0 = "turned down")
+    > When was medical information or a functional abilities form requested, if at all?
+    > - Before the decision was made
+    > - Only after the decision was made
+    > - It was never requested
+    > - Not sure / I don't have that information
+
+    **Q2 — Alternatives** (always shown, step 3)
+    > Were other options considered — such as different duties, adjusted hours, equipment, or a different location?
+    > - Yes, other options were considered
+    > - No, other options were not considered
+    > - Not sure / I don't have that information
+    >
+    > Helper text: *This is about what has happened so far, not whether it was the right call.*
+
+    **Q3 — Written record** (always shown, step 3)
+    > Is there a written record of how this request was assessed — for example notes, an email, or a file entry?
+    > - Yes, there is a written record
+    > - No, nothing was written down
+    > - Not sure / I don't have that information
+
+17. `ProceduralCheckStatus` gains a fourth member, `not-applicable`, for the case where the item has no answer because the precondition never occurred — distinct from `insufficient-information`, which means the answer exists but is unknown. Mapping "no request was ever turned down" to `insufficient-information` would claim ignorance of something we actually know, the same collapse the three-state design exists to prevent.
+
+18. Answer-to-status mapping:
+    - **documentation-requested:** *before* → `done`; *only after* or *never* → `not-done`; *not sure* → `insufficient-information`; Q1 not shown because Q0 is *agreed* / *no decision yet* / *no request made* → `not-applicable`; Q0 = *not sure* → `insufficient-information`, **never** `not-applicable`, because an unknown request status cannot establish that a precondition did not occur.
+    - **alternatives-explored:** *yes* → `done`; *no* → `not-done`; *not sure* → `insufficient-information`.
+    - **analysis-documented:** same pattern as alternatives-explored.
+    - **`not-applicable` applies only to documentation-requested in v1.** Q2 and Q3 are always asked and therefore always have an answer, so those two items can never be `not-applicable`.
+
+19. **Q1 is the only conditional question.** Q0, Q2, and Q3 are always shown. *An earlier draft of this requirement also made Q2 and Q3 conditional on a request existing; Chang vetoed that on 2026-08-18 and it is reverted. Do not reintroduce it — the incoherence argument for hiding them was considered and rejected.*
+
+20. **The internal-action escalation trigger must not fire on `not-applicable`.** `escalation-trigger-rules.ts` currently fires it whenever the documentation item is `!== "done"`, and `not-applicable !== "done"` is true — so an employer who has had no request to deny would be told to request a functional abilities form. Narrow the condition to `not-done` or `insufficient-information` explicitly. This is a new correctness requirement introduced by requirement 17, not a change of heart about Sprint 5 requirement 17's substance.
+
+21. Requirement 9's bound widens to include `ProceduralCheckStatus`. `lib/types.ts` changes are bounded to the new answer unions, the `Situation` fields carrying them, and this status member. Nothing else.
+
+22. Vitest additions: documentation-requested returning `not-applicable` when Q1 is not shown; Q0 = *not sure* yielding `insufficient-information` and never `not-applicable`; alternatives-explored and analysis-documented **never** returning `not-applicable` for any input; the internal-action trigger absent when the documentation item is `not-applicable`; and Q2 and Q3 rendering for every Q0 answer, including *no request has been made*.
+
 ### Acceptance Criteria
 
 - QA1 confirms every new question has an explicit "not sure" / "not applicable" option, and that it maps to `insufficient-information` in the rules.
@@ -60,6 +154,17 @@ only say "I don't know" does not deliver that.
 - QA1 confirms the after-denial fixture now returns `not-done`.
 - QA1 confirms the conditional-question logic in requirement 4.
 - QA1 confirms `lib/types.ts` changes are bounded to requirement 9.
+- QA1 confirms the intake is still three steps: `Step` is `1 | 2 | 3` and the "of 3" label is unchanged.
+- QA1 confirms the stale `escalation-trigger-rules.ts` comment about firing on every result is updated, and that the trigger condition itself is otherwise unchanged.
+- QA1 confirms every artefact listed in requirement 14 is gone — the eslint-disable, the function doc comment, and all three per-item comments.
+- QA1 confirms `buildProsePayload` still takes only an `AnalysisResult` and that no new intake answer field reaches the prose layer.
+- QA1 confirms the requirement 13 tests exist and cover both directions of the trigger transition.
+- QA1 confirms all four questions match requirement 16's wording and options **exactly**, including helper text.
+- QA1 confirms `not-applicable` is distinct from `insufficient-information` in both the type and the mapping, and that Q0 = "not sure" never produces `not-applicable`.
+- QA1 confirms Q2 and Q3 render regardless of Q0's answer, and that only Q1 is conditional.
+- QA1 confirms alternatives-explored and analysis-documented can never return `not-applicable`.
+- QA1 confirms the internal-action trigger does **not** fire when the documentation item is `not-applicable`.
+- QA1 confirms `lib/types.ts` changes are bounded to requirement 21.
 - QA1 runs the Vitest suite and confirms requirement 10's cases exist and pass.
 - GroundTruth completes intake answering the new questions as a **compliant** employer — documentation requested before denial, alternatives explored, analysis written down — and confirms the checklist reports `done` on those items rather than "insufficient information".
 - GroundTruth completes intake as a **non-compliant** employer — denied first, documentation after — and confirms the checklist reports the gap, and that an escalation trigger appears.

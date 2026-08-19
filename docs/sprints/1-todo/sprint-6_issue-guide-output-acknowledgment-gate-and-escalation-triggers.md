@@ -27,7 +27,7 @@ export are Sprint 7 and can be dropped without the product ceasing to work.
 
 ### Requirements
 
-1. A results view rendering the `IssueGuide`: identified grounds with plain-language explanation, the procedural checklist with its three-state status, matched cases, and next steps.
+1. A results view rendering the `IssueGuide`: identified grounds with plain-language explanation, the procedural checklist with its four-state status (`done`, `not-done`, `insufficient-information`, `not-applicable` — see Sprint 8 requirement 17; `not-applicable` must read as "this step does not apply", never as a gap or as unknown), matched cases, and next steps.
 2. Matched cases display title, citation, core fact pattern, and key finding, per the PRD.
 3. Next steps are visually and structurally separated into **internal actions** (e.g. request a functional abilities form) and **counsel triggers** (e.g. a complaint has already been filed; termination of an employee on medical leave is being considered). The separation must be unmistakable, not a subheading in a single list.
 4. Every generated guide displays at least one escalation trigger, rendered from the `EscalationTrigger[]` producer built in Sprint 5 requirement 4. This sprint renders triggers; it does not derive them. If the rules produce none, the guide displays the standing trigger that counsel should be consulted before any termination or discipline decision connected to a protected ground.
