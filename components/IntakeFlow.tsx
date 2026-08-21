@@ -629,7 +629,7 @@ function RadioQuestion<T extends string>({
   invalid?: boolean;
 }) {
   return (
-    <fieldset role="radiogroup" aria-invalid={invalid} aria-describedby={describedById}>
+    <fieldset aria-invalid={invalid} aria-describedby={describedById}>
       <legend className="font-medium text-zinc-900 dark:text-zinc-50">{legend}</legend>
       {helperText && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{helperText}</p>
