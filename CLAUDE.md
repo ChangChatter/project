@@ -363,6 +363,47 @@ scope-violation trap: if this sprint's output *has* become user-visible,
 that is a FAIL, because rendering belonged to another sprint. That version
 can actually fail, which the dressed-up version cannot.
 
+**A gate cannot be assigned a check it has no instrument for.** This is a
+third variant of the same mistake: at gate 1 the artifact does not exist
+yet; at gate 2 the UI may not exist yet; and here the gate exists, the
+artifact exists, and the *measuring instrument* does not. GroundTruth was
+twice asked to verify computed accessible names with no flag-enabled
+Chrome, no CDP `getPartialAXTree`, and no screen reader. The criterion was
+worth writing — it caught a real defect both times — but a third identical
+round returns a third identical CONDITIONAL, which is a stuck gate rather
+than a strict one.
+
+When this happens, split the criterion by what each party can actually
+observe, and assign the remainder to a **named human with a recorded
+artifact** — not to a gate that will keep failing honestly:
+
+- **GroundTruth keeps the DOM-observable half**: attribute presence,
+  `aria-describedby` resolving to IDs that exist, `role="alert"` placement,
+  `<label for>` associations. No special tooling required.
+- **A human keeps the computed-accessible-name half.** Note that CDP's AX
+  tree is Chromium's computation, not what NVDA, JAWS, or VoiceOver
+  announces — provisioning it would buy partial confidence and leave the
+  real question open. On this product especially, a real assistive
+  technology pass by a person is the better answer, not the cheaper one.
+
+**Reships that touch what gate 2 cannot measure go back through gate 1.**
+The normal post-GroundTruth loop — dev fixes, Pipeman reships, GroundTruth
+retests, no QA1 in between — is fast because GroundTruth can verify the
+fix. When the fix touches a class of defect GroundTruth structurally cannot
+measure, that justification is gone and the change would reach production
+past the only gate still running. This is not hypothetical: a Sprint 8
+round-3 ARIA fix introduced a *new* ARIA regression, caught only because
+QA1 happened still to be in the loop. Luck is not a control.
+
+So: **before `/sprint-reship`, Pipeman checks whether the diff touches ARIA
+attributes, roles, labels, or accessible names. If it does, it goes back to
+`/sprint-qa1` for a fresh audit before the push.** This belongs on
+Pipeman's pre-push checklist alongside the deploy-target check. Every other
+reship keeps the fast path. A mechanical backstop in
+`sprint_lifecycle.py`'s `reship` would be stronger than an instruction, but
+that is a change to this repo's own tooling and needs its own review rather
+than a Master Controller decree.
+
 **Documented is not verified.** Splitting a requirement across gates has a
 second failure mode, and it is the one that actually cost a round. When the
 verifiable half moves to gate 2, do not leave behind a pre-push half phrased

@@ -70,7 +70,12 @@ export are Sprint 7 and can be dropped without the product ceasing to work.
 ### Dependencies
 
 - Blocks: Sprint 7.
-- Blocked by: Sprints 2, 4, 5, **and 8**. Sprint 8 adds the structured intake
+- Blocked by: Sprints 2, 4, 5, **and 8**, plus Sprint 8 requirement 24's human
+  accessible-name pass, which must be recorded before this sprint renders.
+  Sprint 6 adds its own output surface, so it needs the same treatment: a
+  human AT pass over the rendered issue guide, not only GroundTruth's
+  DOM-level ARIA checks.
+- Original: Blocked by Sprints 2, 4, 5, and 8. Sprint 8 adds the structured intake
   questions that let the duty-to-accommodate checklist reach `done` and
   `not-done` at all. Until it lands, every checklist item returns
   `insufficient-information` by design (Sprint 5 Amendment 1), and this

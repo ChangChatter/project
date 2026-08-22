@@ -147,6 +147,8 @@ review pass. Do not implement the stronger version now.
 
 23. **Question visibility is a pure function, not a render-time conditional.** Export a named function from `lib/` — e.g. `visibleProceduralQuestions(q0Answer)` — returning which of Q1/Q2/Q3 to show. The component consumes it and does nothing else with visibility. This is how every other decision in this codebase is structured (matching, the bridge, ground rules, validation), it is what QA1 can audit by reading, and it means the requirement 10 and 22 visibility cases are ordinary unit tests. **Do not add `@testing-library/react`, `jsdom`, or `happy-dom`** — see the decision recorded in CLAUDE.md.
 
+24. **Accessible-name verification is a human step, owned by Chang.** GroundTruth verifies ARIA wiring in the DOM; a person verifies what a screen reader actually announces for each of the four new questions and their validation messages, using a real assistive technology. Record the result as a short note in Dev Notes — which AT, which questions, what was announced. This must be done before Sprint 6 renders, and it is a genuine gate on that: a form whose subject matter is disability accommodation, silently unusable by a screen-reader user, is a failure this project should be least willing to ship. See CLAUDE.md on why CDP's AX tree was not provisioned instead.
+
 ### Acceptance Criteria
 
 - QA1 confirms every new question has an explicit "not sure" / "not applicable" option, and that it maps to `insufficient-information` in the rules.
@@ -176,7 +178,8 @@ required a rendered checklist have moved to Sprint 6. Verify what exists:
 - Q1 appears only after Q0 = "it has been turned down", and disappears if Q0 is changed to any other answer.
 - Q2 and Q3 render for every Q0 answer, including "No request has been made".
 - Every new question offers its "Not sure / I don't have that information" option and it is selectable.
-- The new questions are keyboard-navigable, labelled, and announce validation errors to assistive technology.
+- The new questions are keyboard-navigable, and every input has a `<label for>` that resolves.
+- **DOM-observable ARIA only:** `aria-invalid` and `aria-describedby` are present on each new question, `role="alert"` is on the message container, and every `aria-describedby` target ID exists in the document. **Do not attempt to verify computed accessible names** — that check has moved to a human step (see Requirements) after two rounds of returning CONDITIONAL for want of an instrument. Reporting the DOM half as passing is complete work here, not a partial result.
 - The intake is still three steps, labelled "Step N of 3".
 - The Sprint 3 flow still works end to end — per-prompt validation, the "nothing yet" affordance, back-navigation preserving data — and the disclaimer banner is present throughout.
 - **No checklist, grounds, or trigger output is user-visible.** Rendering belongs to Sprint 6; if analysis output has appeared, that is a scope violation and a FAIL.

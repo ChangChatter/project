@@ -628,13 +628,22 @@ function RadioQuestion<T extends string>({
   describedById?: string;
   invalid?: boolean;
 }) {
+  const legendId = useId();
+
   return (
-    <fieldset aria-invalid={invalid} aria-describedby={describedById}>
-      <legend className="font-medium text-zinc-900 dark:text-zinc-50">{legend}</legend>
+    <fieldset aria-describedby={describedById}>
+      <legend id={legendId} className="font-medium text-zinc-900 dark:text-zinc-50">
+        {legend}
+      </legend>
       {helperText && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{helperText}</p>
       )}
-      <div className="mt-2 flex flex-col gap-2">
+      <div
+        role="radiogroup"
+        aria-labelledby={legendId}
+        aria-invalid={invalid}
+        className="mt-2 flex flex-col gap-2"
+      >
         {options.map((option) => (
           <label key={option.value} className="flex items-center gap-2">
             <input
