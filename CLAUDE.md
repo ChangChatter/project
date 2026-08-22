@@ -396,13 +396,35 @@ round-3 ARIA fix introduced a *new* ARIA regression, caught only because
 QA1 happened still to be in the loop. Luck is not a control.
 
 So: **before `/sprint-reship`, Pipeman checks whether the diff touches ARIA
-attributes, roles, labels, or accessible names. If it does, it goes back to
-`/sprint-qa1` for a fresh audit before the push.** This belongs on
-Pipeman's pre-push checklist alongside the deploy-target check. Every other
-reship keeps the fast path. A mechanical backstop in
-`sprint_lifecycle.py`'s `reship` would be stronger than an instruction, but
-that is a change to this repo's own tooling and needs its own review rather
-than a Master Controller decree.
+attributes, roles, labels, or accessible names. If it does, it gets an
+independent QA1 review of that diff, recorded in the sprint file's Dev
+Notes, before the push.** This belongs on Pipeman's pre-push checklist
+alongside the deploy-target check. Every other reship keeps the fast path.
+
+**The control is independent review, not a particular command.** An earlier
+version of this rule said "route back through `/sprint-qa1`", which is not
+executable: `cmd_qa1` accepts only `dev_build`, `qa1_audit`, and
+`dev_agreed_done`, and a sprint in the reship loop is in `groundtruth_live`,
+so the command dies. Dev Team found this while holding a Sprint 8 ARIA fix
+it could not act on without contradicting something on record. QA1 reviewing
+a diff and reporting findings does not require the script — the script
+records verdicts, it does not perform audits — so the review happens
+in-session and lands in Dev Notes. That is the whole substance; the state
+transition was my over-specification.
+
+**Open proposal, not yet decided.** Making this mechanical would be
+stronger, and would mean either a new `groundtruth_live -> qa1_audit`
+transition or a reship-time guard. Note what that actually is:
+`cmd_reship` currently carries a comment stating that skipping a fresh QA1
+pass is *intentional in this two-gate design*, because GroundTruth's retest
+is the check for reshipped code. That reasoning is sound wherever
+GroundTruth can measure the change, and silently wrong where it cannot. So
+this is a revision of a deliberate design decision, not the filling of an
+oversight, and a naive new transition also has to answer what happens after
+the re-audit passes — `dev_done` then `ship`, with `ship`'s tree-hash check
+and `last_shipped_commit` both in play. It needs a real design and an
+independent review, per `## Changes to this repo's own tooling`. It is not
+a Master Controller decree, and it should not be done mid-sprint.
 
 **Documented is not verified.** Splitting a requirement across gates has a
 second failure mode, and it is the one that actually cost a round. When the

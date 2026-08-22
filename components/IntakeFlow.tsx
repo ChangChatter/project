@@ -629,19 +629,25 @@ function RadioQuestion<T extends string>({
   invalid?: boolean;
 }) {
   const legendId = useId();
+  const helperId = useId();
+  const describedBy =
+    [helperText ? helperId : null, describedById].filter(Boolean).join(" ") || undefined;
 
   return (
-    <fieldset aria-describedby={describedById}>
+    <fieldset>
       <legend id={legendId} className="font-medium text-zinc-900 dark:text-zinc-50">
         {legend}
       </legend>
       {helperText && (
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{helperText}</p>
+        <p id={helperId} className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          {helperText}
+        </p>
       )}
       <div
         role="radiogroup"
         aria-labelledby={legendId}
         aria-invalid={invalid}
+        aria-describedby={describedBy}
         className="mt-2 flex flex-col gap-2"
       >
         {options.map((option) => (

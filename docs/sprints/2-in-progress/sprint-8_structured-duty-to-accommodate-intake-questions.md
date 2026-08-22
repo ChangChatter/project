@@ -208,3 +208,30 @@ required a rendered checklist have moved to Sprint 6. Verify what exists:
 - The intake becomes long enough that employers abandon it — only Q1 is conditional (requirement 19), so length is real; GroundTruth walks the full flow and Chang sees it rendered in Sprint 6.
 - Question wording leads the employer toward the answer that makes them look compliant — flagged as an open external dependency needing Chang; no gate can catch it.
 - Sprint 5's limitation test is quietly edited rather than deliberately removed, losing the record that this was a known gap — requirement 6 and a matching acceptance criterion make its removal explicit.
+
+### Dev Notes
+
+Free-form log for records that don't fit the Requirements/Acceptance
+Criteria structure above: QA1 out-of-band reviews, the requirement 24
+human assistive-technology pass, and anything else worth a paper trail
+for the next person auditing this sprint.
+
+- **2026-08-21, QA1 out-of-band review of commit 26787fa (round-3 ARIA
+  regression fix).** Verdict: closed, cleared to reship, contingent on
+  two small additions folded into the reship commit itself: (1)
+  `aria-describedby` moved from the outer `<fieldset>` onto the inner
+  `<div role="radiogroup">` alongside `aria-invalid` and
+  `aria-labelledby`, so name/description/validity live on one node
+  instead of split across two; (2) the helper `<p>` (Q2's "This is about
+  what has happened so far...") given an id and added to that same
+  `aria-describedby`, closing a gap open since round 1 where
+  requirement-16-reviewed helper wording was never announced to screen
+  readers. Both landed in the round-5 commit. No further QA1 round
+  required after these.
+- **Requirement 24 (human assistive-technology pass) — outstanding.**
+  Not yet recorded. Needs a real screen-reader pass (NVDA/VoiceOver) by
+  Chang over the four duty-to-accommodate questions and their
+  validation messages, since GroundTruth has no accname-measurement
+  instrument in this environment (see CLAUDE.md). Must land before
+  Sprint 6 renders the checklist — Sprint 6's Dependencies section
+  blocks on it too.
