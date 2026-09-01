@@ -2,7 +2,7 @@
 id: 8
 title: "Structured duty-to-accommodate intake questions"
 epic: "Intake"
-status: in_progress
+status: done
 created: 2026-08-18T00:00:00+00:00
 ---
 
