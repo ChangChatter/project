@@ -1,5 +1,5 @@
 {
-  "next_id": 9,
+  "next_id": 10,
   "sprints": {
     "1": {
       "title": "App skeleton, domain types, and deployed disclaimer shell",
@@ -48,6 +48,12 @@
       "epic": "Intake",
       "status": "done",
       "file": "docs/sprints/3-done/sprint-8_structured-duty-to-accommodate-intake-questions--done.md"
+    },
+    "9": {
+      "title": "Screen-reader validation feedback and group-naming fixes on duty-to-accommodate intake",
+      "epic": "Output and Guardrails",
+      "status": "in_progress",
+      "file": "docs/sprints/2-in-progress/sprint-9_screen-reader-validation-feedback-and-group-naming-fixes-on-duty-to-accommodate-intake.md"
     }
   }
 }
