@@ -214,32 +214,48 @@ pass. It also puts the invalid/describedby state on a non-focusable wrapper
 div rather than the element NVDA treats as "the group" on entry, which is the
 most likely mechanism behind finding 3 (validation state not perceived).
 
-New structure (this sprint): a single `<fieldset role="radiogroup"
-aria-invalid={invalid} aria-describedby={describedBy}>` with a plain
-`<legend>` child and no `aria-labelledby` — one accessible object, named by
-the browser's native fieldset/legend accname computation, carrying validity
-and description on that same object. The inner `<div>` around the radio
-options is now a plain, role-less layout wrapper (className only).
+New structure (this sprint, revised after QA1's CONDITIONAL PASS on
+`4e03bad`): a single `<fieldset role="radiogroup" aria-labelledby={legendId}
+aria-invalid={invalid} aria-describedby={describedBy}>` with
+`<legend id={legendId}>` — one accessible object, explicitly named via
+`aria-labelledby` pointing at its own `<legend>`, carrying validity and
+description on that same object. The inner `<div>` around the radio options
+remains a plain, role-less layout wrapper (className only).
+
+An intermediate version of this fix (audited as `4e03bad`) dropped
+`aria-labelledby` entirely, relying only on native fieldset/legend
+accname computation. QA1's CONDITIONAL flagged that as an avoidable risk:
+bare `<fieldset role="radiogroup"><legend>` with no explicit name is
+exactly the configuration GroundTruth's round-1 live test on Sprint 8
+previously reported as nameless (see the round-3 discussion below), so
+reinstating `aria-labelledby` — self-referencing the fieldset's own legend
+— removes that risk without reintroducing finding 1: finding 1 came from
+*two separate accessible objects* naming the same text, not from one
+object having both a native legend and an `aria-labelledby` pointing at
+it.
 
 - **Round 3** (`325fef2`, dropped `role="radiogroup"` from the fieldset
   entirely) was working around a "no accessible name" finding from
-  GroundTruth's browser-extension accessibility-tree reader. QA1's own
-  round-2 audit (recorded on Sprint 8) later ran a calibration control
-  through that same instrument and found it under-reports
-  `aria-labelledby`-derived names too — the instrument that produced round
-  3's finding is not reliable evidence either way. This round restores
-  `role="radiogroup"` directly on the fieldset. It does not repeat round 3's
-  regression (losing `aria-invalid` support): `role="radiogroup"` supports
-  `aria-invalid` per ARIA (confirmed by round 4's own investigation, and by
-  `eslint-plugin-jsx-a11y`'s `role-supports-aria-props` rule passing clean on
-  this diff with no warning). Round 3 was also never tested against a real
-  screen reader — Sprint 9's NVDA pass is the first authoritative signal
-  either way, and it confirms names *are* announced by the shipped
-  (round-5) pattern, just twice; nothing in that finding suggests the name
-  would fail to announce once the duplicate is removed, since the same
-  native fieldset+legend naming path is used elsewhere in this file (Step
-  1's employment-status and formal-complaints fieldsets) and was not flagged
-  as silent by this pass.
+  GroundTruth's browser-extension accessibility-tree reader, reported in
+  GroundTruth's round-1 live test on Sprint 8 (CONDITIONAL) — which ran
+  *after* QA1's round-2 PASS on Sprint 8, not before. That same live test's
+  own calibration controls (five fieldsets injected into the live page)
+  showed the instrument under-reports `aria-labelledby`-derived names too
+  (control D), so the instrument that produced round 3's "no name" finding
+  is not fully reliable evidence either way — but per QA1's CONDITIONAL on
+  this sprint, "not fully reliable" is not the same as "safe to omit
+  entirely," so this fix restores `role="radiogroup"` **and**
+  `aria-labelledby` on the fieldset, rather than relying on native naming
+  alone. It does not repeat round 3's regression (losing `aria-invalid`
+  support): `role="radiogroup"` supports `aria-invalid` per ARIA (confirmed
+  by round 4's own investigation, and by `eslint-plugin-jsx-a11y`'s
+  `role-supports-aria-props` rule passing clean on this diff with no
+  warning). Round 3 was also never tested against a real screen reader —
+  Sprint 9's NVDA pass is the first authoritative signal either way, and it
+  confirms names *are* announced by the shipped (round-5) pattern, just
+  twice — evidence about the *two-object* structure, not about whether a
+  single `role="radiogroup"` element with `aria-labelledby` announces
+  correctly, which this revision does not further assume either way.
 - **Round 4** (`26787fa`, moved `role="radiogroup"` onto a new inner `<div>`
   to regain `aria-invalid` support without touching the fieldset) is not
   undone in the sense that matters: `aria-invalid` still sits on an element
@@ -263,8 +279,8 @@ Vitest case applies. `visibleProceduralQuestions()` and every other function
 in `lib/intake-validation.ts` are untouched — confirmed via `git diff --stat`
 showing only `components/IntakeFlow.tsx` changed.
 
-**Self-verification performed**, in a local dev build (`npm run dev`), not
-the deployed site:
+**Self-verification, commit `4e03bad`** (audited by QA1, CONDITIONAL PASS),
+in a local dev build (`npm run dev`), not the deployed site:
 - `tsc --noEmit`, `eslint`, `next build`: all clean.
 - `vitest run`: 63/63, unchanged from Sprint 8 — no test added or removed.
 - Live DOM check (local build, `localhost:3000/intake`, all four questions
@@ -278,6 +294,20 @@ the deployed site:
   shared error `role="alert"` text, plus the Q2 helper text composing
   correctly when both are present), matching Sprint 8 round 5's documented
   DOM guarantees.
+
+**Self-verification, revised commit** (after QA1's CONDITIONAL PASS on
+`4e03bad` asked for `aria-labelledby` reinstated per item A), same local
+dev build:
+- `tsc --noEmit`, `eslint`, `next build`: all clean.
+- `vitest run`: 63/63, unchanged — this revision is markup-only same as the
+  first.
+- Live DOM check, same method and route: all four `fieldset[role="radiogroup"]`
+  elements now carry `aria-labelledby` resolving (by object identity) to
+  that fieldset's own `<legend>`, and still zero nested
+  `[role="radiogroup"]`/`[aria-labelledby]`/`[aria-label]` descendants — one
+  named object per group, now named explicitly rather than only natively.
+  `aria-invalid`/`aria-describedby` behavior re-confirmed unchanged across
+  clean, error, and resolved states.
 - **Not verified, and cannot be from this environment**: whether NVDA
   actually announces the name once (not twice) and speaks the invalid state
   and error text on entry to a failed group. That is gate 3, owned by Chang,
