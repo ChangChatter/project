@@ -70,6 +70,13 @@ export are Sprint 7 and can be dropped without the product ceasing to work.
 ### Dependencies
 
 - Blocks: Sprint 7.
+- **Carried finding from Sprint 11 (Amendment 3): `classical.css`'s `.table th`
+  uses a 60% `color-mix` that measures below WCAG AA on light grounds.** The
+  design handoff specifies `/guide`'s "Dates to watch" section as a `.table`
+  (§Screens 4), so this sprint is the one that will render it. `.card-meta`
+  (50%) and `figcaption` (55%) share the defect. `classical.css`'s `color-mix`
+  ratios are **not AA-safe by default** — measure any new use of a muted, meta,
+  or table-header token rather than assuming it inherits a safe value.
 - Blocked by: Sprints 2, 4, 5, **and 8**, plus Sprint 8 requirement 24's human
   accessible-name pass, which must be recorded before this sprint renders.
   Sprint 6 adds its own output surface, so it needs the same treatment: a

@@ -246,6 +246,46 @@ recorded and unchanged rather than silently altered; confirm no new regression
 on `/intake`. The `<h1>` rendering at 42px is an **expected** result on retest,
 not a failure.
 
+### Amendment 3 — 2026-09-08, after QA1's out-of-band review of `f8f91e8`, Master Controller
+
+Two record-keeping items, neither blocking this sprint.
+
+**Three more sub-AA `color-mix` ratios remain in `classical.css`.** Same defect
+class as `.text-muted`, still latent because nothing renders through them yet:
+
+| Selector | Ratio | Which sprint will hit it |
+|---|---|---|
+| `.table th` | 60% | **Sprint 6.** `/guide`'s "Dates to watch" is specified as a `.table` (handoff §Screens 4) — this is certain, not speculative |
+| `.card-meta` | 50% | The intake restyle. `.card` is the concern-card control (§Screens 2) |
+| `figcaption` | 55% | Nothing planned — the handoff ships no images |
+
+`.text-muted` was fixed reactively, once a real surface used it. These three
+are the same bug sitting in the stylesheet waiting for a consumer, and the
+consumer for `.table th` is already specified. **Fixing them is not this
+sprint's job** — nothing renders through them, and changing tokens no surface
+uses is an unverifiable change. Naming them is, so the next sprint finds this
+in the record rather than in a gate.
+
+The general point for whoever ships those surfaces: **`classical.css`'s
+`color-mix` ratios are not AA-safe by default.** Treat any new use of a muted,
+meta, or table-header token as needing a contrast measurement, not an
+assumption. This is now recorded in Sprint 6's Dependencies as well, since
+relying on a future reader to find it in a different sprint's amendment is
+exactly the kind of hope this record exists to replace.
+
+**CLAUDE.md's `!important` clause was factually wrong and is corrected.** The
+Stack section said neither stylesheet uses `!important`; `classical.css` uses
+it once, at `.no-print { display: none !important }` (line 281), inside its
+print media block. The layer mechanism it was illustrating is unaffected — the
+correction states the exception accurately and notes why it does not bear on
+the Tailwind comparison. Same reasoning as Amendment 2's finding 2: a standards
+file that is wrong in a small way still produces confident wrong predictions,
+and this one sat two paragraphs from a correction made for exactly that reason.
+
+**Dev Notes:** QA1 asked for the three ratios to be named there as well. That is
+Dev Team's file to write, not Master Controller's — the request stands and
+should be actioned in the same commit as the contrast fix.
+
 ### Acceptance Criteria
 
 **Gate 1 — QA1 (static, pre-push):**
@@ -545,10 +585,14 @@ exactly as the amendment describes.
    Re-measured live after the change: hero kicker, panel kicker, panel
    numerals, `/about`'s "Method" kicker, and the active nav link all read
    **5.970:1** (`--color-accent-700` `#7d5411` on `--color-bg`), well
-   clear of 4.5:1. `figcaption` uses the same 55% ratio `.text-muted` did
-   and would fail identically, but nothing in the app renders a
-   `<figcaption>` (confirmed by grep) and Amendment 2 names only
-   `.text-muted` — left unchanged rather than fixed speculatively.
+   clear of 4.5:1. Amendment 2 names only `.text-muted` — nothing else was
+   fixed speculatively, but per QA1's out-of-band review and Amendment 3,
+   the same pre-fix `color-mix` formula survives on three more selectors,
+   all below AA on `--color-bg` and all currently unrendered:
+   `figcaption` (55%, 3.629:1), `.card-meta` (50%, 3.146:1), and
+   `.table th` (60%, 4.211:1) — the sprint that first uses `.card` or
+   `.table` (Sprint 6 for `.table th`, per `/guide`'s "Dates to watch";
+   the intake restyle for `.card-meta`) fixes them then.
 
    `/intake` re-verified unaffected: the duty-to-accommodate scenario
    (Sprint 8–10's regression check) still shows every group as a single
@@ -615,3 +659,156 @@ Live DOM checks (local dev build, not the deployed site):
      accident. Two recorded regressions on this live route is the
      ceiling Amendment 2 sets — a third would mean the deferral has
      become a habit rather than a deliberate call.
+
+---
+
+**Independent QA1 review — 2026-09-08, commit `f8f91e8` (diff against
+`eb58652`). Out-of-band, requested rather than mandated. Not a scripted
+verdict: the sprint is at `groundtruth_live`, and `cmd_qa1` accepts only
+`dev_build`/`qa1_audit`/`dev_agreed_done`, so no lifecycle state changed as a
+result of this review and none should.**
+
+**Result: no objection. The Amendment 2 fix is correct and correctly scoped,
+and this reship may proceed to GroundTruth's retest.**
+
+**This is not the standing ARIA review, and did not need to be.** Amendment 2's
+judgement that the reship keeps the fast path is right. The only `aria` token
+anywhere in the diff is the CSS attribute *selector*
+`.nav a[aria-current='page']` receiving a new colour; no ARIA attribute, role,
+label or accessible name is added, removed or altered, and GroundTruth can
+measure the result of what did change. Verified by diffing `app/` and
+`components/` for `aria-`/`role=` rather than by reading the amendment.
+
+*Scope limit, unchanged across every round of this sprint: attribute
+correctness, reference topology, and — below — contrast arithmetic computed
+from token values in the source. I did not open a browser. Rendered
+measurement is GroundTruth's; announcement is gate 3's; whether the statute
+content is correct law is gate 4's.*
+
+**1. The contrast figures — recomputed independently, not accepted.** Derived
+from the token values in `app/classical.css` and the WCAG 2.x
+relative-luminance formula, compositing the `color-mix` alpha over the
+resolved ground:
+
+| | before | after |
+|---|---|---|
+| `.text-muted` on `--color-bg` | 3.629 | **4.618** |
+| accent text on `--color-bg` | 3.015 | **5.970** |
+
+Both after-figures reproduce Dev Notes' claims exactly, and both before-figures
+reproduce GroundTruth's measured 3.63 and 3.02 — two independent methods,
+a live browser and source arithmetic, agreeing to three significant figures.
+Both now clear the 4.5:1 floor with margin rather than shaved to the line.
+
+**2. The scoping check — the way a fix of this shape goes wrong.** Raising a
+muted colour's opacity helps on a light ground and destroys contrast on a dark
+one, so I checked the colophon band rather than assuming the fix was confined.
+Had either token reached it: `.text-muted` over `--color-colophon` computes to
+**1.033:1**, and `--color-accent-700` there to **2.601:1**. Neither happens:
+
+- `.text-muted` occurs three times (`app/about/page.tsx:97,100`,
+  `app/page.tsx:76`), all on the light page ground.
+- The dark band (`app/page.tsx:158`+) contains no link, button,
+  `.card-kicker` or `.tag-outline` — only a decorative `.hr`.
+- `app/page.tsx:171` keeps `--color-accent-400`, the token GroundTruth
+  measured at 8.57:1 on that ground. Lines 211 and 220 keep plain
+  `--color-accent` for the ghost Roman-numeral watermark and its rule.
+
+That last point independently corroborates Dev Notes' account of a
+`replace_all` briefly catching the watermark: line 211 is plain
+`--color-accent` at this commit, so the revert described is real and complete.
+Re-diffing before commit is what kept this from becoming the fifth fix in this
+component's history to introduce a new defect. Worth recording as the control
+that worked, not just the near miss.
+
+`.nav` and `.footer` declare no background, so they sit on `--color-bg`; the
+active nav link therefore moves from 3.015:1 to 5.970:1 as a side effect —
+a target GroundTruth did not name, fixed anyway.
+
+**3. The cascade correction — GroundTruth is right, and my round-2 PASS
+accepted the wrong mechanism.** Premises verified at this commit rather than
+taken from the amendment: `app/classical.css` contains zero `@layer`
+occurrences, and `app/globals.css` is `@import "tailwindcss"` on v4, which
+emits its rules inside cascade layers. A normal declaration outside any layer
+beats a normal declaration inside one regardless of selector specificity, so
+`classical.css` wins every property both stylesheets set — the reverse of what
+CLAUDE.md stated when I passed it in round 2. I accepted a plausible
+specificity account without testing it, and it was the half of that paragraph
+that would have taught future audits the wrong rule. The corrected text is
+accurate and correctly keeps the per-property observation, which was right,
+while replacing the explanation, which was not.
+
+**4. The `<h1>`/`<h2>` records — checked against the rule bodies.**
+`classical.css:91-93` sets `font-family`, `font-weight`, `line-height`,
+`letter-spacing` and `margin` on `h1..h6`, with `h2 { font-size: 32px }` at
+line 96 and `h1 { font-size: 42px }` at line 95. Every claim in the corrected
+Dev Notes follows: `font-medium` loses to the unlayered `font-weight`, both
+sizes lose to the unlayered `font-size`, and `text-zinc-900` survives only
+because that heading block sets no `color` at all — uncontested, not won. The
+distinction is now stated correctly in both the sprint file and CLAUDE.md.
+
+**5. Mechanical checks re-run at `f8f91e8`.** `vitest run` 110/110 across 16
+files; `tsc --noEmit` and `eslint .` both exit 0. `app/intake/`,
+`components/IntakeFlow.tsx` and all of `lib/` are untouched by this diff. The
+statute guard, `STATUTE_REFERENCE_LIBRARY`, the `guide.ts` import boundary,
+`aria-current` wiring and the decorative-numeral `aria-hidden` attributes are
+all unchanged from the tree that passed gate 1 at `1f69eae`.
+
+**FINDING — the muted-text record is incomplete. Not blocking; worth one
+sentence in Dev Notes.**
+
+Dev Notes names `figcaption` as the one remaining place carrying the pre-fix
+55% formula, and justifies leaving it — unused, and outside Amendment 2's
+named scope. That reasoning is sound. The record is incomplete: there are
+**three** survivors in `app/classical.css`, and one is worse than the value
+that was fixed.
+
+| selector | line | mix | ratio on `--color-bg` |
+|---|---|---|---|
+| `.card-meta` | 200 | 50% | **3.146** |
+| `figcaption` | 108 | 55% | **3.629** |
+| `.table th` | 234 | 60% | **4.211** |
+
+All three are below AA's 4.5:1. All three are currently unrendered —
+`figcaption`, `.card-meta`, `.table th`, `<table>` and `<th>` appear nowhere
+in `app/` or `components/` (grep) — so nothing ships below AA today and this
+blocks nothing. `.field > label` at 70% computes to 5.766:1 and is fine.
+
+Why it is worth recording anyway: `/guide` is a card- and table-shaped surface,
+and Sprint 6 will style it from this system. It would inherit a sub-AA default
+from two of the exact classes this stylesheet provides for that purpose, having
+read a Dev Notes entry that names one latent instance and implies it is the
+only one. This is the complementary half of GroundTruth's measurement —
+a live instrument can only measure what renders; the stylesheet can be read
+for what is waiting.
+
+Suggested wording, since it is one sentence: *the same pre-fix mix survives on
+`figcaption` (55%), `.card-meta` (50%) and `.table th` (60%), all below AA on
+`--color-bg` and all currently unrendered; the sprint that first uses `.card`
+or `.table` fixes them then.*
+
+**MINOR, no action.** CLAUDE.md's new parenthetical — "(This inverts for
+`!important` declarations, which neither stylesheet uses here.)" —
+`app/classical.css:281` does use `!important`, once, for
+`.no-print { display: none !important }` inside `@media print`. Immaterial to
+the Tailwind contention the sentence is about, and the `.no-print` rule is
+uncontested, so nothing is wrong in practice. Recording it because that
+paragraph is a standards file that future audits reason from, and the
+Amendment 2 entry above makes the case better than I can: a standard that is
+actively wrong produces confident incorrect predictions.
+
+**Standing, and not this review's to decide.** GroundTruth's retest against
+this commit is the next gate, with the `<h1>` at 42px an expected result rather
+than a failure, per Amendment 2. Gates 3 and 4 remain outstanding and remain
+outside the state machine: `cmd_complete` checks `qa1_audit_result`,
+`groundtruth_result` and a non-empty `--user-said`, and will let this sprint
+close with Chang's NVDA pass and the legal review both unrecorded. Gate 4 now
+also carries Amendment 2's own referral — the handoff specifies
+`var(--color-accent)` for 10.5px kicker text, which produces an AA failure by
+design, on a pattern that recurs on the intake and `/guide` screens.
+
+Nothing further from me on this diff. Both of GroundTruth's record corrections
+were made properly rather than minimally, the contrast fix was measured rather
+than reasoned to, its blast radius was checked in the one direction that could
+have made things worse, and the accidental watermark edit was caught by the
+author before it shipped.

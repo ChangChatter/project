@@ -313,10 +313,14 @@ utility rules inside CSS cascade layers (`@layer theme, base, components,
 utilities`). `app/classical.css` declares no layer at all. In the CSS cascade,
 a **normal declaration outside any layer beats a normal declaration inside
 one, regardless of selector specificity** — an unlayered type selector
-therefore beats a layered utility class. (This inverts for `!important`
-declarations, which neither stylesheet uses here.) Specificity never enters
-the comparison; nothing about the ordering of the two imports changes it
-either.
+therefore beats a layered utility class. Specificity never enters the
+comparison; nothing about the ordering of the two imports changes it either.
+
+(Layer precedence *reverses* for `!important` declarations, where a layered
+`!important` beats an unlayered one. That does not affect anything described
+here: `classical.css` uses `!important` exactly once, at
+`.no-print { display: none !important }` inside its print media block, where no
+Tailwind utility contests `display` on those elements.)
 
 **The per-property observation was, and remains, correct** — only its
 explanation was wrong. `classical.css` overrides a Tailwind utility only for
