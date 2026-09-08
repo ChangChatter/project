@@ -2,7 +2,7 @@
 id: 9
 title: "Screen-reader validation feedback and group-naming fixes on duty-to-accommodate intake"
 epic: "Output and Guardrails"
-status: in_progress
+status: abandoned
 created: 2026-09-07T18:02:53+00:00
 ---
 
@@ -399,3 +399,124 @@ here, per the standing rule), Pipeman reshipping, GroundTruth re-verifying
 (new commit, new DOM), and Chang re-confirming via NVDA that no group's
 `aria-describedby` now leaks into an unrelated group — before the sprint
 returns to `complete_ready`.
+
+---
+
+**Independent QA1 review — 2026-09-08, commit `93d1090` (diff against
+`011647a`). Out-of-band, per CLAUDE.md's standing rule on ARIA-touching
+fixes. Not a scripted verdict: the sprint is at `complete_ready`, and
+`cmd_qa1` accepts only `dev_build`/`qa1_audit`/`dev_agreed_done`, so no
+lifecycle state changed as a result of this review and none should.**
+
+**Result: no objection. This diff is correct and may reship.**
+
+Reviewed independently against the diff, not against Dev Notes' account of
+it. Where Dev Team's claims are repeated below, they were re-derived from
+the source before being recorded as confirmed.
+
+*Scope limit, unchanged from rounds 1 and 2: this is attribute correctness
+only. Whether the corrected wiring is audible — that a failed group now
+announces its error and a correctly-answered one announces nothing — is
+gate 3, Chang's, and remains open. Nothing here is evidence about how any
+of it sounds.*
+
+**1. Per-question gating — confirmed.** All four `describedById` props in
+`StepNarrative` now read `describedById={xInvalid ? dutyToAccommodateErrorId
+: undefined}` against that question's own flag: `requestStatusInvalid` (775),
+`documentationTimingInvalid` (786), `alternativesExploredInvalid` (798),
+`writtenRecordInvalid` (808). The code delta is exactly those four lines,
++4/-4, nothing else. Each group's `aria-describedby` and `aria-invalid` are
+now driven by the same predicate, which is the property that was missing:
+before this, a group could be `aria-invalid="false"` while pointing at an
+error message, which is the defect Chang heard.
+
+**2. Nothing under requirement 4 moved — confirmed by path filter, not by
+reading.** `git diff --stat 011647a 93d1090` restricted to non-`docs/` paths
+returns `components/IntakeFlow.tsx` alone; restricted to `lib/`, `app/` and
+`package.json` it returns empty. Grepping the diff's own changed lines for
+the `xInvalid` computations, `setDutyToAccommodateError`, the `useState`
+declaration and `visibleProceduralQuestions` returns nothing — none of those
+lines appear in the diff in either direction. `dutyToAccommodateError` is
+still set only at 253 (the `Missing: …` message) and 256/168/173/178/183
+(null). The four `xInvalid` computations at 725-730 are byte-identical to
+`011647a`. Requirement 4 holds: this conveys existing state, it does not
+change it.
+
+**3. Rounds 1 and 2 not regressed — confirmed.** `RadioQuestion`'s body is
+untouched by this diff; the change is entirely at the call sites. Full-file
+sweep: `role="radiogroup"` appears exactly once, `aria-labelledby` exactly
+once, `aria-label` zero times. The fieldset at 637-645 still carries role,
+`aria-labelledby={legendId}`, `aria-invalid` and `aria-describedby` together
+with `<legend id={legendId}>`. One accessible object per group, still named
+explicitly. This is the check Sprint 8 round 3 failed — an ARIA fix that
+introduced a new ARIA regression — and it is why the standing rule exists.
+It passes here.
+
+**4. The multi-missing-field case — checked in the code path myself, not
+taken from Dev Notes' live check.** Traced with three blank and
+`requestStatus` answered "denied" (so `documentationTiming` is visible):
+`dutyToAccommodateError` is the single string "Missing: documentation
+timing, alternatives considered, written record."; `requestStatusInvalid`
+evaluates false because `requestStatus !== null`, so that group emits no
+`describedById` at all; the other three evaluate true and each reference the
+one shared error paragraph, which renders once at 812-819. That matches Dev
+Team's reported result, derived independently.
+
+The invariant that makes this safe is worth recording, because the fix moved
+the reference onto a *different* predicate than the one that renders the
+target: `xInvalid` is `dutyToAccommodateError !== null && x === null`, so
+`xInvalid` true implies `dutyToAccommodateError` is non-null, which is what
+renders `<p id={dutyToAccommodateErrorId}>`. The reference therefore cannot
+outlive its target. The one theoretical gap — `xInvalid` tests `!== null`
+while the render guard tests truthiness, so an empty-string error would
+produce a dangling `aria-describedby` where the old truthiness-gated code was
+safe — is unreachable: `setDutyToAccommodateError` is only ever passed `null`
+or a template literal beginning "Missing: " under
+`missingDutyToAccommodate.length > 0`. Recording it because it is a real
+asymmetry that a future change to that setter would activate silently.
+
+**5. Suite green.** `vitest run` 14 files / 63 passing, unchanged. No test
+file in the diff. `eslint components/IntakeFlow.tsx` exits 0 silent, with
+`jsx-a11y/role-supports-aria-props` active. Correctly no new test: this
+reuses four existing booleans and introduces no new decision, so there is no
+pure function to cover — the same requirement-6 reasoning as rounds 1 and 2,
+and adding a test that asserts markup would violate the project's testing
+standard.
+
+**One thing for gate 3 to listen for, not a defect and not blocking.** The
+error message remains a shared summary. With three groups failing, all three
+now reference the same paragraph naming all three, so the text announced on
+entry to "alternatives considered" also names documentation timing and
+written record. Requirement 1 is satisfied — the group's own failure is named
+in what the user hears, and `aria-invalid` distinguishes it — but the
+description alone no longer uniquely identifies which group is which when
+several fail together. This is GroundTruth's original gate-2 observation
+narrowed from "every visible group" to "every failed group," which is a much
+smaller residual and is arguably correct behaviour for a summary. Worth
+listening for at gate 3 rather than fixing blind; a per-field message would
+be a new requirement, not an in-flight substitution.
+
+**Process, for the record.** Dev Notes' corrected process note is accurate:
+the scripted path is genuinely unavailable from `complete_ready`, and this
+review is the control CLAUDE.md specifies in its place. Two consequences
+follow that are not this review's to decide:
+
+- The sprint's recorded `qa1_audited_tree_hash` is `011647a`'s tree, and
+  `last_shipped_commit` is `011647a`. `93d1090` is neither audited by the
+  script nor shipped. This review is the independent check the standing rule
+  requires before Pipeman reships; it is not a substitute for the reship, and
+  it does not make `93d1090` the audited commit in the state file.
+- Gates 2 and 3 both need re-running against the new commit, as Dev Notes
+  already says. GroundTruth can observe the DOM-level half of this fix
+  directly — that a correctly-answered group carries no `aria-describedby`
+  while a failed one resolves to the error text — which makes this an unusual
+  case where gate 2 *can* measure most of what changed. The part it cannot
+  measure is the part that produced the bug in the first place, so Chang's
+  re-pass is still required, and closing on gates 1 and 2 alone would repeat
+  the exact mistake this sprint exists to correct.
+
+Nothing further from me on this diff. It is a four-line fix that reuses state
+that already existed, does not touch a single thing it was told not to touch,
+and leaves rounds 1 and 2 intact. The kids found the right fix for what Chang
+heard and did not go looking for adjacent things to improve while they were
+in there.
