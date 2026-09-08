@@ -772,7 +772,7 @@ function StepNarrative({
         options={REQUEST_STATUS_OPTIONS}
         value={requestStatus}
         onChange={onRequestStatusChange}
-        describedById={dutyToAccommodateError ? dutyToAccommodateErrorId : undefined}
+        describedById={requestStatusInvalid ? dutyToAccommodateErrorId : undefined}
         invalid={requestStatusInvalid}
       />
 
@@ -783,7 +783,7 @@ function StepNarrative({
           options={DOCUMENTATION_TIMING_OPTIONS}
           value={documentationTiming}
           onChange={onDocumentationTimingChange}
-          describedById={dutyToAccommodateError ? dutyToAccommodateErrorId : undefined}
+          describedById={documentationTimingInvalid ? dutyToAccommodateErrorId : undefined}
           invalid={documentationTimingInvalid}
         />
       )}
@@ -795,7 +795,7 @@ function StepNarrative({
         options={ALTERNATIVES_EXPLORED_OPTIONS}
         value={alternativesExplored}
         onChange={onAlternativesExploredChange}
-        describedById={dutyToAccommodateError ? dutyToAccommodateErrorId : undefined}
+        describedById={alternativesExploredInvalid ? dutyToAccommodateErrorId : undefined}
         invalid={alternativesExploredInvalid}
       />
 
@@ -805,7 +805,7 @@ function StepNarrative({
         options={WRITTEN_RECORD_OPTIONS}
         value={writtenRecord}
         onChange={onWrittenRecordChange}
-        describedById={dutyToAccommodateError ? dutyToAccommodateErrorId : undefined}
+        describedById={writtenRecordInvalid ? dutyToAccommodateErrorId : undefined}
         invalid={writtenRecordInvalid}
       />
 

@@ -314,3 +314,88 @@ dev build:
   per the sprint's own design — this fix is reasoned from ARIA semantics and
   the existing (working) native-fieldset-naming pattern elsewhere in this
   file, not confirmed by ear.
+
+**Round 3 — gate-3 finding, wrong error attached to unrelated groups.**
+
+Chang's NVDA pass over all four questions (gate 3, run against a local
+build, `011647a`) found a new defect neither QA1's static audit nor
+GroundTruth's DOM checks could have caught, because it only shows up when
+exactly one of the four duty questions is unanswered: tabbing into "When
+was medical information..." and "Were other options considered..." (both
+answered correctly) announced "Missing: written record." — the validation
+message for a different, unrelated question. "Has this employee asked..."
+was reported clean in that pass; live DOM inspection here found the same
+underlying wiring defect present on that group too (see below) — the fix
+corrects it uniformly regardless.
+
+**Root cause.** In `StepNarrative`, all four `RadioQuestion` call sites
+passed `describedById={dutyToAccommodateError ? dutyToAccommodateErrorId :
+undefined}` — gated only on whether *any* duty question is currently
+invalid, not on whether *that* question is. `aria-invalid` was already
+correctly scoped per question (`requestStatusInvalid`,
+`documentationTimingInvalid`, `alternativesExploredInvalid`,
+`writtenRecordInvalid` — each `dutyToAccommodateError !== null && x ===
+null`). So whenever any one duty question was missing, every group's
+`aria-describedby` pointed at the same shared error paragraph, including
+groups that were themselves answered correctly — reading as if that group
+were the one with the problem.
+
+**Fix.** Changed each `describedById` prop from the global
+`dutyToAccommodateError` check to that question's own already-computed
+`xInvalid` flag — e.g. `describedById={requestStatusInvalid ?
+dutyToAccommodateErrorId : undefined}`, and likewise for the other three.
+No new state, no new predicate: reuses the four booleans that already
+existed for `aria-invalid`, now driving `aria-describedby` too. Markup/
+wiring only — `dutyToAccommodateError`, the four `xInvalid` computations
+themselves, and `visibleProceduralQuestions()` are all untouched, so this
+stays within the sprint's requirement 4 boundary (conveying existing
+state, not changing it).
+
+**Verified live** (local dev build, same method as prior rounds):
+reproduced the exact reported scenario (`writtenRecord` blank, the other
+three answered, "Yes — turned down" for Q1 so `documentationTiming` is
+visible) before and after the fix.
+- Before: all four groups' `aria-describedby` resolved to "Missing:
+  written record.", including the three correctly-answered ones.
+- After: `requestStatus`, `documentationTiming`, `alternativesExplored`
+  (all answered) carry no error reference at all (`alternativesExplored`
+  still carries its unrelated helper-text id, unaffected); only
+  `writtenRecord` (the one actually blank) carries `aria-describedby`
+  resolving to "Missing: written record."
+- Re-checked the multi-missing-field case (three blank, one answered) to
+  confirm the fix didn't regress it: the three invalid groups still share
+  one summary message naming all three ("Missing: documentation timing,
+  alternatives considered, written record."), and the one correctly
+  answered group (`requestStatus`) now carries no error reference —
+  previously it incorrectly did.
+- `tsc --noEmit`, `eslint`, `next build`, `vitest run` (63/63, unchanged):
+  all clean.
+
+**Process note, corrected.** An earlier draft of this note (written before
+re-checking `sprint-9.json`) argued the scripted `/sprint-qa1` path was
+still available because the sprint hadn't shipped. That was wrong: by the
+time this fix was written, Pipeman had already shipped `011647a`
+(`cdcd134`), GroundTruth's live test had already recorded a PASS, and the
+sprint was at phase `complete_ready` — both gates green, awaiting the
+user's explicit authorization to `/sprint-complete`. `cmd_qa1` accepts only
+`dev_build`/`qa1_audit`/`dev_agreed_done`; `complete_ready` isn't one of
+them, so a scripted re-audit genuinely isn't available from here, and
+CLAUDE.md's standing rule — an ARIA-touching fix gets an independent QA1
+review recorded in Dev Notes, not the fast reship path — is the correct
+route after all, for the reason the rule actually states (the script
+refuses), not the reason the first draft of this note gave.
+
+Worth recording precisely because GroundTruth's own PASS report predicted
+this: its "OBSERVATIONS FOR GATE 3" section flagged that the shared error
+element was referenced by every visible group, not just the failed one,
+and named the exact risk — "if the error text is announced on every group,
+then the only thing distinguishing the failed group by ear is the invalid
+state itself, not the error text" — as unblocking at gate 2 but worth
+listening for at gate 3. Chang's NVDA pass is what confirmed it. Gates 1
+and 2 did their job; gate 3 caught what only gate 3 could.
+
+This fix needs, in order: an independent QA1 review of this diff (recorded
+here, per the standing rule), Pipeman reshipping, GroundTruth re-verifying
+(new commit, new DOM), and Chang re-confirming via NVDA that no group's
+`aria-describedby` now leaks into an unrelated group — before the sprint
+returns to `complete_ready`.
