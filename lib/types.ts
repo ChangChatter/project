@@ -356,6 +356,23 @@ export type IssueGuide =
   | (IssueGuideCore & { casesWithheld: true; matches: [] });
 
 /**
+ * A statute or regulation section this app is permitted to cite, with the
+ * specific section(s) — Sprint 11. Mirrors `CaseExcerpt`'s role for case
+ * law: `STATUTE_REFERENCE_LIBRARY` (`lib/statute-citation-guard.ts`) is the
+ * only place these are declared, and its fail-closed guard exists to catch
+ * the same failure mode `checkCitationGuard` catches for cases — a
+ * reference whose id coincidentally matches but whose text has drifted or
+ * been fabricated.
+ */
+export interface StatuteReference {
+  id: string;
+  /** e.g. "Human Rights Code, RSBC 1996, c. 210" */
+  statute: string;
+  /** e.g. "ss. 13, 43" */
+  section: string;
+}
+
+/**
  * A persisted session pairing a Situation with the issue guide generated
  * from it. Stubbed and unowned: session persistence is Sprint 7, which is
  * blocked pending the security/privacy decision on what a SessionRecord

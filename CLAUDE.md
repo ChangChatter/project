@@ -285,9 +285,35 @@ worse than no standard, because agents will still be auditing against it.
 | Layer | Choice | Notes |
 |---|---|---|
 | Frontend | Next.js (App Router) + TypeScript | Deployed on Vercel |
-| Styling | Tailwind CSS | No competing CSS-in-JS or component library unless a sprint explicitly introduces one |
+| Styling | Tailwind CSS + `classical.css` design system | Coexist deliberately since Sprint 11 — see the split below. No third competing system unless a sprint explicitly introduces one |
 | Database | Supabase (Postgres) | Session persistence, and the verified BC HRT case-library seed data |
 | Testing | Vitest | Unit tests only, see `### Testing` below |
+
+**Tailwind and `classical.css` coexist deliberately, since Sprint 11.**
+`classical.css` (`app/classical.css`) is the design-system stylesheet for the
+site's marketing and content chrome — the persistent layout
+(`app/layout.tsx`: disclaimer bar, nav, footer), the landing page, and
+`/about`. It owns global element-level defaults (`body` typography,
+`box-sizing`, `h1`–`h6` sizing/weight) and a component-class layer (`.btn`,
+`.card`, `.input`, `.field`, `.radio`, `.seg`, `.tag`, `.hr`, `.nav`) built
+from CSS custom-property tokens. New chrome, landing, and `/about` markup
+styles through those classes and tokens, not Tailwind utilities — mixing
+both systems within one component is what this split exists to avoid.
+
+`/intake` keeps its existing Tailwind utility classes untouched. On a
+conflict for the *same element*, Tailwind utility classes win locally:
+they're class selectors, and `classical.css`'s bare-element rules (`body`,
+`h1`...) are lower-specificity type selectors imported after Tailwind's own
+reset, so an explicit Tailwind class on a given element still applies. What
+Tailwind does **not** shield `/intake` from is `classical.css`'s
+*inherited*, unstyled defaults — an element with no explicit Tailwind font
+utility inherits `classical.css`'s serif body font rather than Tailwind's
+prior sans-serif default, because `classical.css` is imported globally in
+`app/layout.tsx` and reaches every route. This is a known, accepted effect
+of Sprint 11 landing the stylesheet globally before intake is restyled to
+match it — see Sprint 11's Dev Notes and requirement 8 for what was
+verified and what was deliberately left as a finding rather than fixed in
+that sprint.
 
 ### Domain types
 
