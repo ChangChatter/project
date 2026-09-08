@@ -85,11 +85,14 @@ requirement 8 and gate 3 exist.
    band's ghost Roman numerals (`I`/`II`/`III` at `opacity: .22`) and the
    `01`/`02`/`03` panel ordinals are presentational; they must not be announced
    as content.
-10. **No import of `lib/guide.ts` anywhere in this diff.** It declares twelve
-    domain-shaped types outside `lib/types.ts` and is an automatic FAIL under
-    CLAUDE.md's domain-types rule until they are relocated. That relocation
-    belongs to the sprint that first needs the file. `/about`'s statute
-    references come from `STATUTE_REFERENCE_LIBRARY`, not from `guide.ts`.
+10. **No import of `lib/guide.ts` anywhere in this diff.** The file may be
+    committed to the repository — it is, at `d735884` — but nothing in this
+    sprint may import or wire it. It declares twelve domain-shaped types
+    outside `lib/types.ts`, which CLAUDE.md's domain-types rule forbids; those
+    must be relocated into `lib/types.ts` and reconciled against `Situation`
+    **before** the first sprint that imports the file, not after. `/about`'s
+    statute references come from `STATUTE_REFERENCE_LIBRARY`, not from
+    `guide.ts`. See Amendment 1 for the presence-versus-import distinction.
 11. Vitest coverage for the statute guard: a listed reference passes; an
     unlisted one is withheld rather than rendered; the guard does not throw on
     malformed input.
@@ -97,6 +100,151 @@ requirement 8 and gate 3 exist.
 **Locked variant decisions, deferred to their own sprints:** hairline-rule
 stepper (intake), grouped-by-pass intake layout (intake), "Why this path"
 section on (`/guide`). Recorded here so they are settled, not re-opened.
+
+### Amendment 1 — 2026-09-08, after QA1 rounds 1–2, Master Controller
+
+QA1 raised this in both audit rounds, which is the signal that it needed
+settling in the definition rather than in Dev Notes. Dev Team and QA1 reached
+the correct reading independently and recorded their agreement — but two people
+agreeing about what a requirement means is not the same as the requirement
+saying it, and Sprint 10's Amendment 1 set the precedent that this gets fixed
+in the text.
+
+**Requirement 10 governs imports and wiring, not presence in the repository.**
+`lib/guide.ts` is committed (`d735884`). That is intended: it is a delivered
+handoff artifact that later sprints will draw content from, and keeping it out
+of version control to satisfy a rule about type declarations would be worse in
+every respect — an untracked file is one `git clean` from gone.
+
+What requirement 10 forbids is any file in this sprint's diff **importing** it,
+and nothing does — verified: no `import` of `guide.ts` exists anywhere in the
+repository.
+
+**The gate-1 domain-types criterion is scoped to match.** "No domain-shaped
+interface is declared outside `lib/types.ts`" applies to files this sprint
+creates or modifies. It does **not** fail on `lib/guide.ts`'s twelve
+declarations, which arrived as an unmodified third-party artifact and are
+quarantined by requirement 10 rather than absolved by it.
+
+**The violation is real and still outstanding.** `lib/guide.ts` declares
+`Answers`, `Concern`, `ConcernId`, `PathId`, `FactorId`, `DeadlineKey`,
+`PathStep`, `Framework`, `Bullet`, `GuidePath`, `DeadlineRow` and
+`Recommendation` outside `lib/types.ts`, and CLAUDE.md's domain-types rule
+admits no exception. Nothing here waives it. The file is tolerable in the tree
+**only because nothing imports it**, and the moment a sprint wires it up, those
+types must move into `lib/types.ts` first — reconciled against `Situation`,
+which `Answers` partially duplicates and partially contradicts. That
+relocation is a precondition of the first sprint to import the file, not a
+follow-up to it.
+
+The narrow rule, stated once so it cannot be stretched: **an unwired,
+unmodified handoff artifact does not fail the domain-types audit; the first
+diff that imports it does, until its types are relocated.**
+
+### Amendment 2 — 2026-09-08, after GroundTruth round 1 (CONDITIONAL), Master Controller
+
+Three findings, none touching ARIA — so this reship keeps the fast path and
+does not need the standing independent-ARIA-review step. Findings 2 and 3 are
+one defect with two symptoms.
+
+**Finding 1 — contrast. FIX, in this sprint.**
+
+`.text-muted` measures **3.63:1**, below AA's 4.5:1, and on `/about` it carries
+the entire statute section-reference column — "ss. 13, 43", "ss. 63, 74, 83".
+Those are not decorative; they are the references a user needs in order to
+check a citation. This sprint introduced `STATUTE_REFERENCE_LIBRARY` and a
+fail-closed guard precisely so that no statute reference renders unverified.
+Rendering them **verified but unreadable** defeats the purpose the guard
+exists to serve. Correctness and legibility are both preconditions of a
+reference doing its job.
+
+Two changes, and only one is a design change:
+
+- `.text-muted`'s `color-mix` ratio (currently `var(--color-text) 55%`)
+  increases until it **measures** ≥4.5:1 on `--color-bg`. Dev Team sets the
+  value by measurement, not arithmetic.
+- **Accent text at body or small size on light grounds uses
+  `--color-accent-700`, not `--color-accent`.** This is not a design change —
+  it is applying the design system as documented. The handoff itself assigns
+  `--color-accent-700` to "accent-coloured text at body size, caution icons",
+  and the dark band already correctly uses `--color-accent-400` (measuring
+  8.57:1). Using `--color-accent` for 10.5px kicker text on a light ground was
+  a misapplication of the system's own tokens. `--color-accent` remains correct
+  for **strokes** — rules, borders, icons — where the 3:1 non-text threshold
+  applies.
+
+**For Chang, beyond this sprint:** the handoff specifies `var(--color-accent)`
+for the kicker at 10.5px directly (§Screens 1). The design *as written*
+produces an AA failure on light grounds, and the same kicker pattern appears on
+the intake and `/guide` screens. This is worth correcting at the source rather
+than sprint by sprint.
+
+**Finding 2 — the cascade explanation. CORRECTED.**
+
+This is the most consequential of the three, and not because of its visual
+impact. CLAUDE.md said a Tailwind utility wins over `classical.css` on a
+contested property, by specificity. Both halves were wrong, and the conclusion
+was **backwards**: `classical.css` wins.
+
+The mechanism is cascade layers. Tailwind v4 emits its rules inside
+`@layer theme, base, components, utilities`; `app/classical.css` declares no
+layer; a normal declaration outside any layer beats one inside a layer
+regardless of specificity. Verified directly: `classical.css` has no `@layer`,
+`app/globals.css` has `@import "tailwindcss"`, and `classical.css:95` is an
+unlayered `h1 { font-size: 42px }`.
+
+CLAUDE.md's *Stack* section is corrected in this sprint's diff. The
+per-property observation there was right and is kept; only its explanation was
+wrong. **Dev Notes must also be corrected** — its claims that the `<h2>`'s
+`font-medium` "does still win for weight" (it measures 600) and that the
+completion `<h1>`'s `text-2xl` protects it (it does not) are both false, and a
+wrong record is worse than no record because future audits check against it.
+
+CLAUDE.md's own standard applies to itself here: *a standard nobody has updated
+is worse than no standard, because agents will still be auditing against it.*
+A standard that is actively wrong is worse still — it does not merely fail to
+help, it produces confident incorrect predictions, which is exactly what
+finding 3 is.
+
+**Finding 3 — the completion `<h1>` at 42px. RECORD, do not fix here.**
+
+`components/IntakeFlow.tsx:849` carries `text-2xl` (24px) and renders at 42px,
+because `classical.css`'s unlayered `h1` rule beats the layered utility. Dev
+Notes recorded it as protected. It was never protected.
+
+It is nonetheless the **same class of finding as the accepted `<h2>`** — a
+Tailwind utility losing a contested property to the global stylesheet on a
+route this sprint was not permitted to edit. What was wrong was the record, not
+the decision. Requirement 8 is explicit: *if the stylesheet breaks intake, that
+is a finding to raise, not to absorb.*
+
+Three reasons not to fix it in this loop:
+
+1. **The only fix that works is a global cascade change** — putting
+   `classical.css` into a layer, or scoping its element rules. That alters
+   precedence on every route including the new ones, and doing it inside a
+   CONDITIONAL fix loop, where GroundTruth's retest is the sole remaining gate,
+   is the pattern CLAUDE.md warns against for changes a gate cannot fully
+   measure.
+2. **It is cosmetic and not harmful.** 42px is oversized, not illegible. No
+   functional impact, no accessibility impact. Contrast is the opposite on both
+   counts, which is why the two findings resolve differently. The asymmetry is
+   deliberate: fix what harms and what this sprint owns; record what is
+   cosmetic and belongs to another sprint's surface.
+3. **The right fix belongs to the intake restyle**, which will set that heading
+   deliberately rather than rescuing a Tailwind value by accident.
+
+To keep this a deferral rather than a shrug: **the intake restyle sprint is
+scoped next, and the completion `<h1>` is an explicit requirement in it**, named
+alongside the `<h2>`. Two recorded regressions on a live route is the ceiling —
+a third means the deferral has become a habit and the restyle moves ahead of
+everything else.
+
+**GroundTruth's retest scope:** re-measure `.text-muted` and every accent text
+instance on light grounds against AA; confirm the `<h1>` and `<h2>` findings are
+recorded and unchanged rather than silently altered; confirm no new regression
+on `/intake`. The `<h1>` rendering at 42px is an **expected** result on retest,
+not a failure.
 
 ### Acceptance Criteria
 
@@ -114,7 +262,10 @@ section on (`/guide`). Recorded here so they are settled, not re-opened.
   or throwing unhandled.
 - QA1 confirms `STATUTE_REFERENCE_LIBRARY` is a named export, and that every
   statute reference rendered on `/about` resolves to an entry in it.
-- QA1 confirms no domain-shaped interface is declared outside `lib/types.ts`.
+- QA1 confirms no domain-shaped interface is declared outside `lib/types.ts`
+  **in any file this sprint creates or modifies**. `lib/guide.ts`'s twelve
+  declarations are quarantined by requirement 10, not absolved by it — see
+  Amendment 1.
 - QA1 confirms `aria-current` is wired from the active route, and that the
   decorative numerals in requirement 9 are hidden from assistive technology.
 - QA1 runs the Vitest suite, confirms it is green including requirement 11's
@@ -212,7 +363,7 @@ unclosable and it is now two gates wide. Do not discover it a third time.
 
 - Blocks: the intake restyle sprint and Sprint 6's rescope, both of which build
   on this stylesheet and chrome.
-- Blocked by: nothing. All three handoff files are on disk.
+- Blocked by: nothing. All three handoff files are in the repo — `app/classical.css` and `lib/guide.ts` committed at `d735884`, `docs/design-handoff.md` alongside them. `lib/guide.ts` is committed but **unwired**; see Amendment 1.
 - External: Chang for gate 3 (NVDA) and gate 4 (legal review). Neither is
   enforced by the script.
 
@@ -355,6 +506,55 @@ absent from `/about`. `lib/guide.ts` is not imported in this diff
 (requirement 10), so nothing here can reconcile the two — recording it so
 it isn't rediscovered as new.
 
+**Amendment 2, Finding 1 — contrast fix.** Two changes, both scoped
+exactly as the amendment describes.
+
+1. `.text-muted`'s `color-mix` ratio raised from `var(--color-text) 55%`
+   to `63%`. Set by measurement, not arithmetic: read the live computed
+   color off a rendered `.text-muted` element (`/about`'s "ss. 13, 43"
+   reference column) via `getComputedStyle`, composited it against
+   `--color-bg` (the browser reports a `color-mix` result as a
+   translucent `color(srgb r g b / a)`, not a pre-composited `rgb()`, so
+   compositing by hand against the background was necessary before
+   computing luminance), and confirmed the WCAG contrast formula gives
+   **4.618:1** — above the 4.5:1 floor with a small margin for rounding,
+   not shaved to the line. Re-measured after landing the change; not
+   inferred from the CSS value alone.
+
+2. Every genuine **text** usage of `var(--color-accent)` on a light
+   ground switched to `var(--color-accent-700)`; every **stroke**
+   usage (borders, outlines, `<hr>` rules, the radio dot fill, the caret,
+   background tints) left as `--color-accent`, per the amendment's
+   explicit boundary. Concretely, changed: `classical.css`'s base
+   `a { color }`, `.btn-primary`'s and `.btn-ghost`'s `color` (not their
+   `border-color`), `.seg-opt:has(input:checked)`'s `color` (not its
+   `box-shadow` ring), `.card-kicker`, `.tag-outline`'s `color` (not its
+   `border`), and `.nav a:hover`/`[aria-current='page']`'s `color`; plus
+   the landing hero kicker, the "what you get back" panel kicker and its
+   `01`/`02`/`03` numerals, and `/about`'s and `Nav`'s "Method"/"BC"
+   kicker text. Left unchanged: every `<hr>`'s `background` (a rule, not
+   text), the dark colophon band's ghost Roman-numeral watermark (already
+   `--color-accent`, decorative, and the amendment names the dark band as
+   already correct), `:focus-visible` outlines, `::selection`, the radio
+   dot's border/background/box-shadow, and the input caret. A
+   `replace_all` edit briefly caught the ghost-numeral watermark by
+   accident (identical surrounding code shape to the panel numeral it was
+   meant to target) — caught by re-diffing before commit, reverted to
+   plain `--color-accent`.
+
+   Re-measured live after the change: hero kicker, panel kicker, panel
+   numerals, `/about`'s "Method" kicker, and the active nav link all read
+   **5.970:1** (`--color-accent-700` `#7d5411` on `--color-bg`), well
+   clear of 4.5:1. `figcaption` uses the same 55% ratio `.text-muted` did
+   and would fail identically, but nothing in the app renders a
+   `<figcaption>` (confirmed by grep) and Amendment 2 names only
+   `.text-muted` — left unchanged rather than fixed speculatively.
+
+   `/intake` re-verified unaffected: the duty-to-accommodate scenario
+   (Sprint 8–10's regression check) still shows every group as a single
+   named element with correctly-scoped `aria-invalid`/`aria-describedby`,
+   run fresh against this round's CSS.
+
 **Self-verification.** `tsc --noEmit`, `eslint`, `next build`: all clean.
 `vitest run`: 110/110 (up from 63 — the two new statute-guard cases plus
 the `guide.ts`-import-boundary sweep), no render-assertion test added.
@@ -381,29 +581,37 @@ Live DOM checks (local dev build, not the deployed site):
   actually invalid. The Sprint 8–10 work is structurally intact under the
   global stylesheet.
   **Visual finding, not fixed here per requirement 8's explicit
-  instruction:** `/intake`'s typography visibly shifted, and the shift is
-  two distinct things, not one — see CLAUDE.md's Stack-section note for
-  the general rule; this is the specific finding on this route.
-  1. **Inherited defaults.** Text with no explicit Tailwind font utility
-     (most body text, labels, options) inherits `classical.css`'s serif
-     body font (Lora) rather than Tailwind's prior sans-serif default,
-     because `classical.css`'s `body` rule now wins the cascade and
-     nothing on those elements overrides `font-family` locally.
-  2. **A direct type-selector hit, not merely inherited.** The
-     duty-to-accommodate section `<h2>` (`components/IntakeFlow.tsx:760`,
-     `className="font-medium text-zinc-900 dark:text-zinc-50"`) carries
-     no Tailwind font-size utility at all, so `classical.css`'s
-     `h2 { font-size: 32px; ... }` rule applies directly to that element
-     — it renders at 32px instead of the browser's un-set default, a
-     direct match, not something merely flowing down from `body`. Its
-     `font-medium`/`text-zinc-900` classes *do* still win for weight and
-     color, since Tailwind explicitly sets those properties on that
-     element — the shielding is per property, not per element, exactly
-     as CLAUDE.md's note now states. The completion-screen `<h1>` at line
-     849 (`text-2xl font-semibold`) is size- and weight-shielded the same
-     way, but still takes `classical.css`'s `h1` rule directly for
-     `font-family`, `line-height`, `letter-spacing`, and `margin`, none of
-     which any Tailwind class on that element sets.
-  This is the accepted, named risk from this sprint's own Risks section —
-  raised here as the finding it names, not absorbed by editing intake
-  markup.
+  instruction — corrected under Amendment 2.** `/intake`'s typography
+  visibly shifted. The original write-up here explained the shift by
+  Tailwind-utility specificity and claimed the `<h2>`'s `font-medium`
+  still won for weight and the `<h1>`'s `text-2xl` protected its size.
+  **Both claims were false**, and false for the same reason: the
+  mechanism is CSS cascade **layers**, not specificity. Tailwind v4 emits
+  its rules inside `@layer theme, base, components, utilities`;
+  `classical.css` declares no layer at all, and an unlayered normal
+  declaration beats a layered one outright, regardless of selector
+  specificity — see CLAUDE.md's Stack-section note (corrected in this
+  same round) for the full mechanism and the verified case list.
+
+  Two regressions on `/intake`, both accepted and deferred to the intake
+  restyle sprint per requirement 8, neither fixed here:
+  1. **The duty-to-accommodate `<h2>`** (`components/IntakeFlow.tsx:760`,
+     `className="font-medium text-zinc-900 dark:text-zinc-50"`).
+     `classical.css`'s unlayered `h1, h2, … { font-weight:
+     var(--font-heading-weight) }` beats `font-medium` outright, measured
+     live at **600**, not Tailwind's 500. The same unlayered rule's
+     `h2 { font-size: 32px }` applies for the same reason. `text-zinc-900`
+     *does* still apply, but only because `classical.css`'s heading rule
+     sets no `color` at all — an uncontested property kept by default,
+     not a contest Tailwind won.
+  2. **The completion-screen `<h1>`** (`components/IntakeFlow.tsx:849`,
+     `text-2xl font-semibold`). Measured live at **42px**, not 24px —
+     `text-2xl` does not protect it; `classical.css`'s unlayered
+     `h1 { font-size: 42px }` beats it the same way it beats the
+     `<h2>`'s size. Recorded as the same class of finding as the `<h2>`,
+     per Amendment 2: cosmetic, not harmful, no accessibility impact, and
+     the right fix belongs to the intake restyle sprint, which now names
+     both headings explicitly rather than either being rescued by
+     accident. Two recorded regressions on this live route is the
+     ceiling Amendment 2 sets — a third would mean the deferral has
+     become a habit rather than a deliberate call.

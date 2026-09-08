@@ -20,7 +20,7 @@ export default function Nav() {
             fontFamily: "var(--font-body)",
             fontSize: "10.5px",
             letterSpacing: "0.16em",
-            color: "var(--color-accent)",
+            color: "var(--color-accent-700)",
           }}
         >
           BC

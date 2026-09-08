@@ -29,7 +29,7 @@ export default function Home() {
               fontSize: "10.5px",
               textTransform: "uppercase",
               letterSpacing: "0.16em",
-              color: "var(--color-accent)",
+              color: "var(--color-accent-700)",
               marginBottom: "18px",
             }}
           >
@@ -91,7 +91,7 @@ export default function Home() {
               fontSize: "10px",
               textTransform: "uppercase",
               letterSpacing: "0.1em",
-              color: "var(--color-accent)",
+              color: "var(--color-accent-700)",
               margin: 0,
             }}
           >
@@ -129,7 +129,7 @@ export default function Home() {
                 style={{
                   fontFamily: "var(--font-heading)",
                   fontSize: "19px",
-                  color: "var(--color-accent)",
+                  color: "var(--color-accent-700)",
                   fontFeatureSettings: "'tnum'",
                 }}
               >

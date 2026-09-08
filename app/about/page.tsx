@@ -51,7 +51,7 @@ export default function About() {
           fontSize: "10.5px",
           textTransform: "uppercase",
           letterSpacing: "0.16em",
-          color: "var(--color-accent)",
+          color: "var(--color-accent-700)",
           marginBottom: "12px",
         }}
       >

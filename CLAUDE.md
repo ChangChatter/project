@@ -300,29 +300,50 @@ from CSS custom-property tokens. New chrome, landing, and `/about` markup
 styles through those classes and tokens, not Tailwind utilities — mixing
 both systems within one component is what this split exists to avoid.
 
-`/intake` keeps its existing Tailwind utility classes untouched. On a
-conflict for the *same CSS property on the same element*, an explicit
-Tailwind utility wins locally — it's a class selector, and
-`classical.css`'s bare-element rules (`body`, `h1`...) are
-lower-specificity type selectors imported after Tailwind's own reset. That
-protection is **per property, not per element**: an element can carry
-Tailwind classes covering some of its properties and still take every
-*other* property directly from `classical.css`'s type-selector rules,
-because nothing shields what Tailwind never set on that element in the
-first place. Two concrete, distinct cases on `/intake`, both real: text
-with no explicit Tailwind font utility at all *inherits*
-`classical.css`'s serif body font rather than Tailwind's prior sans-serif
-default — that one is inheritance. But
-`components/IntakeFlow.tsx`'s duty-to-accommodate section `<h2>` carries
-no Tailwind font-size utility, so `classical.css`'s `h2 { font-size: 32px;
-... }` rule is a **direct type-selector match** on that element, not an
-inherited default — the same element can simultaneously keep a
-Tailwind-set property (its `font-medium`, `text-zinc-900` color classes)
-while losing an unset one (size) straight to `classical.css`. This is a
-known, accepted effect of Sprint 11 landing the stylesheet globally before
-intake is restyled to match it — see Sprint 11's Dev Notes and requirement
-8 for what was verified and what was deliberately left as a finding
-rather than fixed in that sprint.
+`/intake` keeps its existing Tailwind utility classes untouched.
+
+**The mechanism is cascade layers, not specificity.** An earlier version of
+this section said a Tailwind utility "wins locally" because it is a class
+selector beating a lower-specificity type selector. That is wrong, and wrong
+in the direction that matters: **`classical.css` wins, not Tailwind.**
+GroundTruth established this by controlled experiment during Sprint 11.
+
+Tailwind v4 (`@import "tailwindcss"` in `app/globals.css`) emits its base and
+utility rules inside CSS cascade layers (`@layer theme, base, components,
+utilities`). `app/classical.css` declares no layer at all. In the CSS cascade,
+a **normal declaration outside any layer beats a normal declaration inside
+one, regardless of selector specificity** — an unlayered type selector
+therefore beats a layered utility class. (This inverts for `!important`
+declarations, which neither stylesheet uses here.) Specificity never enters
+the comparison; nothing about the ordering of the two imports changes it
+either.
+
+**The per-property observation was, and remains, correct** — only its
+explanation was wrong. `classical.css` overrides a Tailwind utility only for
+properties `classical.css` actually sets. An element can lose one property to
+it while keeping another, because a property `classical.css` never sets is
+uncontested and Tailwind's value applies normally.
+
+Three concrete, verified cases on `/intake`, which are distinct from each
+other:
+
+- **Inheritance.** Text with no font utility at all inherits `classical.css`'s
+  serif body font instead of Tailwind's former sans-serif default. Nothing is
+  overridden here; there was simply no competing declaration.
+- **A contested property, lost.** `components/IntakeFlow.tsx`'s
+  duty-to-accommodate `<h2>` carries `font-medium` (500). `classical.css`'s
+  unlayered `h1, h2, … { font-weight: var(--font-heading-weight) }` beats it,
+  and the heading measures **600**. Its `<h2>` also takes `font-size: 32px`
+  from the same rule.
+- **An uncontested property, kept.** That same `<h2>`'s `text-zinc-900` colour
+  applies normally, because `classical.css`'s heading rule sets no `color`.
+
+This is a known effect of Sprint 11 landing the stylesheet globally before
+intake is restyled to match it. Sprint 11 Amendment 2 records which specific
+regressions were accepted and deferred to the intake restyle sprint, and
+requirement 8 records why they were not fixed in place. **When predicting
+whether a Tailwind utility survives on `/intake`, ask whether `classical.css`
+sets that property — not which selector is more specific.**
 
 ### Domain types
 
