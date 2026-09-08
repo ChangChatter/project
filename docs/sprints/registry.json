@@ -58,8 +58,8 @@
     "10": {
       "title": "Per-group error scoping and screen-reader validation feedback on duty-to-accommodate intake",
       "epic": "Output and Guardrails",
-      "status": "todo",
-      "file": "docs/sprints/1-todo/sprint-10_per-group-error-scoping-and-screen-reader-validation-feedback-on-duty-to-accommodate-intake.md"
+      "status": "in_progress",
+      "file": "docs/sprints/2-in-progress/sprint-10_per-group-error-scoping-and-screen-reader-validation-feedback-on-duty-to-accommodate-intake.md"
     }
   }
 }
