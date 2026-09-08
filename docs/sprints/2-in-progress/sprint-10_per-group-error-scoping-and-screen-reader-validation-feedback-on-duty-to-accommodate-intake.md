@@ -405,3 +405,28 @@ not the deployed site:
   whether NVDA announces each name once, speaks the invalid state and
   error text on entry to a failed group, and stays silent on a correct
   one. That is Chang's pass, per this sprint's own design.
+
+**Gate 3 — human AT pass (Chang, NVDA + Speech Viewer, keyboard only, live
+site) — PASS.**
+
+All four duty-to-accommodate questions tested, in two configurations:
+
+- **Single-blank** (`documentationTiming` left blank, other three
+  answered): the blank group announced "invalid entry. Missing:
+  documentation timing." once, on entry. The three answered groups
+  announced nothing about being missing.
+- **Two-blank** (`alternativesExplored` and `documentationTiming` both
+  left blank, other two answered): both blank groups correctly shared one
+  summary naming both ("Missing: documentation timing, alternatives
+  considered."); both answered groups (`requestStatus`, `writtenRecord`)
+  stayed clean — no error text announced.
+- Each question announced once in both passes — no double-naming
+  observed, in either configuration.
+
+**Requirements 1, 2, 3, and 6 all confirmed by ear.** No defect found.
+This closes the loop GroundTruth's own PASS report left open ("if a
+passing group still announces an error at gate 3, the cause is not the
+reference topology") — it doesn't, in either the single- or
+multi-failure case, and the shared-summary case Amendment 1 explicitly
+permits is confirmed to behave as intended (both failing groups correctly
+share it; neither answered group hears it).
