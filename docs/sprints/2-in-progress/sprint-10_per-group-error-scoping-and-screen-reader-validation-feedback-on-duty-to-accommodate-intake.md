@@ -81,10 +81,14 @@ Sprint 5 Amendment 1 exists. Requirement 6 closes it.
    need not repeat on every option within it.
 2. **Each question is announced once, not twice, on arrival at its group.**
    The accessible name remains the full question text.
-3. **Error text is scoped per group and reaches no group that did not fail.**
-   A correctly-answered group announces no error text. Requirements 1 and 3
-   are a matched pair: satisfying either alone leaves failed and correct
-   groups indistinguishable, which is the defect in both directions.
+3. **No group that passed validation references error text.** A
+   correctly-answered group announces no error text, ever. **A single shared
+   error element referenced by two or more groups that have genuinely failed
+   is permitted and is not a defect** — see Amendment 1. The property enforced
+   here is that error text is never *misattributed* to a passing group; it is
+   **not** that each group owns a private message. Requirements 1 and 3 are a
+   matched pair: satisfying either alone leaves failed and correct groups
+   indistinguishable, which is the defect in both directions.
 4. **Neither fix reintroduces a defect a previous round already fixed.** This
    component has a documented history of exactly that: Sprint 8 round 3
    dropped `role="radiogroup"` to restore legend naming, removing the role
@@ -105,6 +109,72 @@ Sprint 5 Amendment 1 exists. Requirement 6 closes it.
    is satisfied by stating that in Dev Notes — **not** by adding a test that
    asserts markup, which this project's testing standard forbids.
 
+### Amendment 1 — 2026-09-07, after QA1 round 1 (FAIL), Master Controller
+
+QA1's FAIL is procedurally correct and the defect is in this sprint
+definition, not in the code. QA1 refused to read leniency into requirement 3's
+wording and escalated to the role that owns requirements instead of guessing
+its intent, which is exactly right; a gate that quietly resolves an ambiguity
+in the direction it assumes is convenient is not a gate.
+
+**The intent is the narrow reading: ban misattribution, not sharing.** A
+shared `role="alert"` summary referenced by two or more groups that have
+genuinely failed validation is **permitted**. Requirement 3 and the gate-1
+criterion are amended above to say so explicitly.
+
+**Where the ambiguity came from, since it is a repeatable mistake.** Four
+statements in this file bear on the question. The requirement 3 body ("reaches
+no group that did not fail"), the gate-2 GroundTruth criterion, and the gate-3
+criterion all encoded the narrow reading. Only the gate-1 QA1 criterion ("no
+error-text element is referenced by more than one group") encoded the strict
+one. Three to one, and the outlier is the error — but QA1 audits against the
+criterion assigned to it, so the outlier is the one that fired.
+
+The mechanism is worth naming: I reached for a **statically checkable proxy**
+because it was easy to verify by reading markup, and substituted it for the
+property I actually wanted, which is state-dependent and harder to check.
+"No element referenced twice" is trivially auditable. "No error text reaches a
+group that did not fail" requires knowing which groups failed. The proxy was
+wrong in a case I had not considered — two groups genuinely failing at once —
+and it forbade something harmless while claiming to describe the real rule.
+**An acceptance criterion that is easier to check than the requirement it
+verifies is usually checking something different from that requirement.** The
+amended criterion is auditable *and* correct because it targets the code's
+structure — is the reference conditional on the group's own validity — rather
+than a runtime snapshot.
+
+**Why the narrow reading is also the right answer, not merely the cheaper
+one.** The two cases differ in kind, not degree:
+
+- A **passing** group announcing error text is *misleading*. It tells the user
+  to fix something they already did correctly. That is the finding-4 defect
+  and it must not ship.
+- Two **genuinely failing** groups sharing an accurate summary is *noisy but
+  true*. The user learns this group failed, plus something true about another
+  group. Requirement 1's purpose — the user can perceive that this group
+  failed and why — is satisfied.
+
+This also aligns the file with a judgment already twice on the record: during
+Sprint 9 both QA1 and GroundTruth stated that a per-field message would be a
+**new requirement**, not something implied by the original fix. My gate-1
+criterion accidentally contradicted two gates' recorded reasoning, which
+should have been the tell.
+
+**Per-group error messages are a legitimate improvement and are explicitly not
+this sprint.** Hearing "this question needs an answer" scoped to the group you
+are standing in is genuinely better than hearing a list naming three groups,
+repeated on each of the three. That is a real UX gain and it is welcome to
+become its own sprint with its own gates. It is not a defect fix, it would
+require composing per-group content and almost certainly a new pure function
+with Vitest coverage under requirement 7, and folding it in here is the
+"while we're in there" this project has repeatedly refused. Recorded in Out of
+Scope so it is neither lost nor smuggled in.
+
+**No code change is required by this amendment.** The code as it stands at
+`93d1090` is unchanged and QA1 should re-audit it against the amended text.
+If it satisfies the amended requirement 3, that is a PASS — Dev Team does not
+need to build anything new to clear this round.
+
 ### Acceptance Criteria
 
 **Gate 1 — QA1 (static, pre-push):**
@@ -112,10 +182,14 @@ Sprint 5 Amendment 1 exists. Requirement 6 closes it.
 - QA1 confirms the diff touches no validation rule, no visibility rule, no
   question wording, and no domain type. Per requirement 5, any of those is a
   FAIL.
-- QA1 confirms **each group's `aria-describedby` resolves only to elements
-  belonging to that group**, and that no error-text element is referenced by
-  more than one group. This is requirement 3 and it is the specific defect
-  that ended Sprint 9.
+- QA1 confirms **each group's reference to error text is conditional on that
+  group's own validity** — a group that is not itself invalid emits no
+  `aria-describedby` pointing at error text. That is the statically auditable
+  form of requirement 3, and it is what distinguishes the defect from the
+  permitted case. **A shared `role="alert"` summary referenced by two or more
+  genuinely failing groups is PERMITTED and is not a finding** (Amendment 1).
+  An *unconditional* reference — every group pointing at the summary
+  regardless of its own state, which is what shipped at `011647a` — is a FAIL.
 - QA1 confirms Dev Notes contains the requirement 4 statement: for each ARIA
   change, which prior round it interacts with and why it does not undo that
   round's fix. A diff without this is not auditable and is a FAIL.
@@ -165,6 +239,12 @@ Sprint 5 Amendment 1 exists. Requirement 6 closes it.
   sprint, per CLAUDE.md. Fixing it here would mean designing a lifecycle
   change under the clock of the sprint that needs it — the specific thing
   CLAUDE.md warns against.
+- **Per-group error messages** — a distinct message per question rather than
+  one shared summary. A real improvement (see Amendment 1), and a new
+  requirement rather than a defect fix: it needs composed per-group content
+  and almost certainly a new pure function with Vitest coverage. Its own
+  sprint, with its own gates. Both QA1 and GroundTruth said as much during
+  Sprint 9.
 - **The mouse-click split announcement** ("not checked" then "checked"). A
   mouse-only artifact of browser event sequencing, not a screen-reader
   navigation defect. Fixing it means changing event handling — logic — for
@@ -263,10 +343,15 @@ layout wrapper.
   is preserved and, on this document's requirement 3, tightened further:
   round 5 established "don't split name, validity and description across
   nodes" — this markup keeps all four on one element. What changes from
-  round 5 is *scope*, not placement: `describedBy` now composes only the
-  current question's own error id (gated on that question's own `invalid`
-  flag), not a globally-shared one. The helper-text-id wiring round 5 added
-  is untouched.
+  round 5 is *conditionality*, not the id itself: there is still one
+  shared `dutyToAccommodateErrorId` (`useId()` called once in
+  `StepNarrative`, referenced by all four call sites) — not a private id
+  per question. What changed is that each call site's *reference* to it is
+  now conditional on that question's own `invalid` flag, rather than
+  unconditional whenever any duty question is invalid. Per Amendment 1,
+  multiple genuinely-failing groups referencing that same shared element is
+  correct behavior, not a residual defect. The helper-text-id wiring round
+  5 added is untouched.
 - **Sprint 9's naming fix** (`4e03bad` → `011647a`, collapsed the outer
   fieldset/inner div into one element, then added `aria-labelledby`) is
   fully preserved — this is that same markup, unedited by `93d1090`. Swept
