@@ -301,19 +301,28 @@ styles through those classes and tokens, not Tailwind utilities — mixing
 both systems within one component is what this split exists to avoid.
 
 `/intake` keeps its existing Tailwind utility classes untouched. On a
-conflict for the *same element*, Tailwind utility classes win locally:
-they're class selectors, and `classical.css`'s bare-element rules (`body`,
-`h1`...) are lower-specificity type selectors imported after Tailwind's own
-reset, so an explicit Tailwind class on a given element still applies. What
-Tailwind does **not** shield `/intake` from is `classical.css`'s
-*inherited*, unstyled defaults — an element with no explicit Tailwind font
-utility inherits `classical.css`'s serif body font rather than Tailwind's
-prior sans-serif default, because `classical.css` is imported globally in
-`app/layout.tsx` and reaches every route. This is a known, accepted effect
-of Sprint 11 landing the stylesheet globally before intake is restyled to
-match it — see Sprint 11's Dev Notes and requirement 8 for what was
-verified and what was deliberately left as a finding rather than fixed in
-that sprint.
+conflict for the *same CSS property on the same element*, an explicit
+Tailwind utility wins locally — it's a class selector, and
+`classical.css`'s bare-element rules (`body`, `h1`...) are
+lower-specificity type selectors imported after Tailwind's own reset. That
+protection is **per property, not per element**: an element can carry
+Tailwind classes covering some of its properties and still take every
+*other* property directly from `classical.css`'s type-selector rules,
+because nothing shields what Tailwind never set on that element in the
+first place. Two concrete, distinct cases on `/intake`, both real: text
+with no explicit Tailwind font utility at all *inherits*
+`classical.css`'s serif body font rather than Tailwind's prior sans-serif
+default — that one is inheritance. But
+`components/IntakeFlow.tsx`'s duty-to-accommodate section `<h2>` carries
+no Tailwind font-size utility, so `classical.css`'s `h2 { font-size: 32px;
+... }` rule is a **direct type-selector match** on that element, not an
+inherited default — the same element can simultaneously keep a
+Tailwind-set property (its `font-medium`, `text-zinc-900` color classes)
+while losing an unset one (size) straight to `classical.css`. This is a
+known, accepted effect of Sprint 11 landing the stylesheet globally before
+intake is restyled to match it — see Sprint 11's Dev Notes and requirement
+8 for what was verified and what was deliberately left as a finding
+rather than fixed in that sprint.
 
 ### Domain types
 

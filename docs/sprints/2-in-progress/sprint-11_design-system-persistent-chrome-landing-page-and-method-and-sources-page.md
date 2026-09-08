@@ -334,6 +334,20 @@ register). None of it asserts a statute section number or a specific
 legal conclusion. Needs the same gate-4 pass as the hero's "Most of these
 situations are workable" framing.
 
+**`lib/guide.ts` is committed in this diff — deliberately, not an
+oversight.** It was already on disk when this sprint started (the
+handoff's own dependency note), but nobody had committed it yet, and
+requirement 10 is silent on whether the *file's presence* is in scope,
+only on whether anything *imports* it. Committed it alongside
+`docs/design-handoff.md` and `app/classical.css` as the third
+already-finished, static sprint input, on the same reasoning as the other
+two: it's a real deliverable per the handoff ("real, portable TypeScript
+... Drop it in as-is"), a later sprint needs it in version control to
+import from, and leaving it permanently untracked would be the actual
+oversight. Its presence is knowingly unimported — enforced mechanically
+by `lib/guide-import-boundary.test.ts`, not merely asserted — so the guard
+against requirement 10 doesn't rely on the file simply not existing yet.
+
 **Pre-existing inconsistency, not resolved here.** Per this sprint's own
 gate-4 list: `/about`'s sources table (built to the handoff's spec)
 cites ESA s. 74, absent from `guide.ts`; `guide.ts` cites ESA ss. 50–56,
@@ -367,14 +381,29 @@ Live DOM checks (local dev build, not the deployed site):
   actually invalid. The Sprint 8–10 work is structurally intact under the
   global stylesheet.
   **Visual finding, not fixed here per requirement 8's explicit
-  instruction:** `/intake`'s typography visibly shifted — labels,
-  options, and body text now render in `classical.css`'s serif body font
-  (Lora) instead of the prior sans-serif, because nothing in
-  `components/IntakeFlow.tsx` sets an explicit font-family and
-  `classical.css`'s `body`/type-element rules now win the cascade (see
-  CLAUDE.md's Stack-section note above). Colors and explicit Tailwind
-  utility classes (e.g. the primary button's `bg-blue-700`) are
-  unaffected, since those are class selectors that still win locally.
-  This is the accepted, named risk from this sprint's own Risks section
-  — raised here as the finding it names, not absorbed by editing intake
+  instruction:** `/intake`'s typography visibly shifted, and the shift is
+  two distinct things, not one — see CLAUDE.md's Stack-section note for
+  the general rule; this is the specific finding on this route.
+  1. **Inherited defaults.** Text with no explicit Tailwind font utility
+     (most body text, labels, options) inherits `classical.css`'s serif
+     body font (Lora) rather than Tailwind's prior sans-serif default,
+     because `classical.css`'s `body` rule now wins the cascade and
+     nothing on those elements overrides `font-family` locally.
+  2. **A direct type-selector hit, not merely inherited.** The
+     duty-to-accommodate section `<h2>` (`components/IntakeFlow.tsx:760`,
+     `className="font-medium text-zinc-900 dark:text-zinc-50"`) carries
+     no Tailwind font-size utility at all, so `classical.css`'s
+     `h2 { font-size: 32px; ... }` rule applies directly to that element
+     — it renders at 32px instead of the browser's un-set default, a
+     direct match, not something merely flowing down from `body`. Its
+     `font-medium`/`text-zinc-900` classes *do* still win for weight and
+     color, since Tailwind explicitly sets those properties on that
+     element — the shielding is per property, not per element, exactly
+     as CLAUDE.md's note now states. The completion-screen `<h1>` at line
+     849 (`text-2xl font-semibold`) is size- and weight-shielded the same
+     way, but still takes `classical.css`'s `h1` rule directly for
+     `font-family`, `line-height`, `letter-spacing`, and `margin`, none of
+     which any Tailwind class on that element sets.
+  This is the accepted, named risk from this sprint's own Risks section —
+  raised here as the finding it names, not absorbed by editing intake
   markup.
