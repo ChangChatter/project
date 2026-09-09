@@ -2,7 +2,7 @@
 id: 11
 title: "Design system, persistent chrome, landing page, and Method and sources page"
 epic: "Front-end Redesign"
-status: in_progress
+status: done
 created: 2026-09-07T00:00:00+00:00
 ---
 
