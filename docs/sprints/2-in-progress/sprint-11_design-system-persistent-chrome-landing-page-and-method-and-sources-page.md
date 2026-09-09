@@ -592,6 +592,23 @@ change, no logic touched; self-verified (`tsc`, `eslint`, `vitest`
 the item this entry flagged. Every other authored-copy item above
 remains open pending the rest of gate 4.
 
+**Gate 3 — human AT pass (Chang, NVDA + Speech Viewer, live deployed
+site) — PASS, 2026-09-08.** Regression check against Sprint 10's exact
+scenario, re-run under this sprint's global stylesheet: reached `/intake`
+step 3, left one of the four duty-to-accommodate questions blank,
+answered the other three, and submitted. The blank question's group
+announced its own "Missing: ..." message; the three answered groups
+stayed clean — no error text, single announcement each — matching Sprint
+10's result unchanged. This is the specific regression requirement 8 and
+gate 3 exist to catch (`classical.css`'s own `.radio`/`.seg` styling and
+global resets reaching `/intake` without a line of its code being
+edited), and it did not reoccur under the new stylesheet.
+
+Not separately re-confirmed in this pass, per gate 3's own acceptance
+criteria: the nav/landing-button/`/about`-back-button keyboard
+reachability and the decorative-numeral silence checks. Recording only
+what was reported; not inferring a broader sweep than what's stated.
+
 **`lib/guide.ts` is committed in this diff — deliberately, not an
 oversight.** It was already on disk when this sprint started (the
 handoff's own dependency note), but nobody had committed it yet, and
