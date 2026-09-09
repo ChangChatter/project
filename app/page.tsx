@@ -44,7 +44,7 @@ export default function Home() {
               textWrap: "balance",
             }}
           >
-            Most of these situations are workable.
+            An Employer&apos;s Guide to HRT Complaints
           </h1>
           <hr
             className="hr"
