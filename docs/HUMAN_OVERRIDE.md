@@ -10,7 +10,10 @@ reach for in the middle of a build.
 ## Why this exists
 
 Four of this project's mechanical checks refuse outright, no override, by
-design:
+design (a fifth, unrelated capability lives here too — see "Un-declaring a
+human gate" below, which isn't a refusal to unstick but the same
+deliberately-heavy-handed pattern applied to removing a declared human
+gate):
 
 - `/sprint-dev-done` refuses if the sprint file has changed since QA1's
   PASS.
@@ -74,6 +77,33 @@ python3 scripts/sprint_lifecycle.py override <id> \
   --confirm OVERRIDE
   # optionally --commit <hash> if you're not shipping HEAD
 ```
+
+## Un-declaring a human gate
+
+Sprint 12 added two named human verification gates (gate3 = a human
+accessibility pass, e.g. NVDA; gate4 = legal-content review), declared
+per-sprint via `/sprint-declare-gate` and required by `/sprint-complete`
+once declared. There is deliberately no "undeclare" slash command — a
+sprint can't quietly stop needing a gate it said it needed. The only way
+to remove one is here, reusing this exact mechanism:
+
+```bash
+# Undeclare gate4 (legal-content review) — e.g. scope changed and the
+# sprint no longer touches anything that needs one
+python3 scripts/sprint_lifecycle.py override <id> \
+  --gate gate4 \
+  --reason "scope changed, no legal content in this sprint after all" \
+  --confirm OVERRIDE
+  # --gate gate3 for the accessibility-pass gate
+```
+
+Same rules as the two hash overrides: `--confirm OVERRIDE` and a non-empty
+`--reason`, both required, permanently logged. Unlike the hash overrides,
+this doesn't unstick drift toward a real precondition that still has to be
+true — it removes the requirement itself, which is exactly why it belongs
+here rather than as a command any of the six roles reach for. It preserves
+the gate's prior recorded result (if any) in the history; only whether
+`/sprint-complete` still requires a fresh one changes.
 
 `--confirm` must be the literal word `OVERRIDE`, typed deliberately.
 `--reason` is required and non-empty — write what you actually reviewed,

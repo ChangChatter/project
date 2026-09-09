@@ -1,5 +1,5 @@
 {
-  "next_id": 12,
+  "next_id": 13,
   "sprints": {
     "1": {
       "title": "App skeleton, domain types, and deployed disclaimer shell",
@@ -66,6 +66,12 @@
       "epic": "Front-end Redesign",
       "status": "done",
       "file": "docs/sprints/3-done/sprint-11_design-system-persistent-chrome-landing-page-and-method-and-sources-page--done.md"
+    },
+    "12": {
+      "title": "Human verification gates in the sprint lifecycle state machine",
+      "epic": "Workflow Tooling",
+      "status": "in_progress",
+      "file": "docs/sprints/2-in-progress/sprint-12_human-verification-gates-in-the-sprint-lifecycle-state-machine.md"
     }
   }
 }

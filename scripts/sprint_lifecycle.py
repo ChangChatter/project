@@ -53,6 +53,41 @@ Phases (in order, with the loops):
   complete         -> Closed. Sprint file moved to 3-done/.
   aborted          -> Abandoned. Sprint file moved to 5-abandoned/.
 
+Human verification gates (Sprint 12) sit alongside this phase list rather
+than inside it. Two named gates exist — gate3 (a human accessibility pass,
+e.g. NVDA) and gate4 (legal-content review) — neither performed by QA1 or
+GroundTruth, neither with an instrument either of them has (CLAUDE.md's
+"a gate cannot be assigned a check it has no instrument for"). A sprint
+declares a gate applies (declare-gate, any phase before complete/aborted,
+idempotent, addable mid-sprint) and records its verdict (record-gate,
+same VALID_VERDICTS as qa1/groundtruth). cmd_complete refuses to close a
+sprint with any declared gate lacking a fresh PASS on record — see
+cmd_complete's own comment for why there is no override for that check,
+same reasoning as the missing-user-said case.
+
+Recording a gate FAIL/CONDITIONAL while the sprint sits at complete_ready
+reopens it: phase resets to dev_build (never groundtruth_live — that would
+misrepresent a live test that did not actually fail, Sprint 9's exact
+defect) and both QA1 hash fields are nulled, same defensive move cmd_qa1's
+own FAIL branch already makes, so a later dev-done/ship cannot be
+satisfied by a stale PASS from before whatever the gate found. GroundTruth's
+own PASS event is never touched or re-labeled; the reopen is its own
+distinct history event naming which gate and why. A FAIL/CONDITIONAL
+recorded earlier in the loop (the gate was checked mid-build) does not
+reopen anything — there is nothing to reopen yet — but still blocks
+cmd_complete the same way. A PASS never reopens anything, regardless of
+what the notes say: whether a finding violates a sprint's own requirements
+(reopen) or is a judgement call that does not (Sprint 11's headline —
+closed at its shipped commit, handled as separate work) is a human decision
+made at the moment the verdict is recorded, not a distinction the script
+evaluates.
+
+A declared gate is not silently removable: there is no "undeclare"
+subcommand. The only way to remove one is `override --gate gate3` (or
+gate4), which requires the same --confirm OVERRIDE and non-empty --reason
+as the hash overrides below, and is permanently logged — at least as
+visible as re-stamping a hash, per Sprint 12 Q2's constraint.
+
 The "no override" language above is accurate for every path an agent can
 reach: no flag on dev-done or ship bypasses either hash check, and neither
 is documented anywhere an agent reads. There is a separate `override`
@@ -106,6 +141,34 @@ STATUS_FOLDERS = {
 }
 
 VALID_VERDICTS = {"PASS", "FAIL", "CONDITIONAL"}
+
+# The two named human verification gates this project has actually invented
+# (Sprint 8's requirement 24 / gate 3, Sprint 11's gate 4) — see Sprint 12's
+# design. Deliberately not a generic plugin system: CLAUDE.md is explicit
+# that only these two gates exist and building for hypothetical future ones
+# is scope creep. --which on the CLI uses the short keys (gate3/gate4);
+# state and history use the long keys, so a reader of the JSON doesn't have
+# to memorize what "3" means.
+GATE_KEYS = {"gate3": "gate3_nvda", "gate4": "gate4_legal"}
+GATE_LABELS = {
+    "gate3_nvda": "Gate 3 (human AT pass, e.g. NVDA)",
+    "gate4_legal": "Gate 4 (legal-content review)",
+}
+
+
+def default_human_gates() -> dict:
+    return {key: {"declared": False, "result": None, "rounds": 0} for key in GATE_KEYS.values()}
+
+
+def get_gate(state: dict, long_key: str) -> dict:
+    """Defensive read for both axes of backward compatibility: a state file
+    from before this field existed has no "human_gates" key at all, and a
+    state file written by this version but never touched by declare/record
+    still has both gates present with safe defaults. Never raises on a
+    missing key either way — a missing gate entry is "never declared", the
+    normal case for the eleven sprints that predate this field, not an
+    error condition."""
+    return state.get("human_gates", {}).get(long_key, {"declared": False, "result": None, "rounds": 0})
 
 
 def now() -> str:
@@ -406,6 +469,7 @@ def cmd_start(args) -> None:
             "groundtruth_result": None,
             "audit_rounds": 0,
             "live_test_rounds": 0,
+            "human_gates": default_human_gates(),
             "started": now(),
             "completed": None,
             "history": [],
@@ -431,6 +495,14 @@ def cmd_status(args) -> None:
     print(f"Phase: {state['phase']}")
     print(f"QA1 audit result: {state['qa1_audit_result']} (rounds: {state['audit_rounds']})")
     print(f"GroundTruth live result: {state['groundtruth_result']} (rounds: {state['live_test_rounds']})")
+    for long_key, label in GATE_LABELS.items():
+        gate = get_gate(state, long_key)
+        if not gate["declared"]:
+            continue  # Not declared for this sprint — most sprints have no
+            # accessibility surface and no legal content, so silence here is
+            # the normal case, not a gap. cmd_complete only checks declared
+            # gates too; an undeclared gate blocks nothing.
+        print(f"{label}: {gate['result']} (rounds: {gate['rounds']})")
     if state["phase"] == "groundtruth_live":
         # Pure observability, doesn't gate anything: a ship/reship that
         # landed after the last recorded live_test verdict means whatever
@@ -637,6 +709,115 @@ def cmd_groundtruth(args) -> None:
         save_state(args.id, state)
 
 
+def cmd_declare_gate(args) -> None:
+    """Declares that one of the two named human verification gates applies
+    to this sprint. Works in any phase before complete/aborted — Sprint 8
+    added its human gate mid-build, Sprint 11's was scoped before it
+    started, and both must be expressible (Sprint 12 Q2). Idempotent:
+    declaring an already-declared gate is a no-op, not an error, since
+    Dev Team may call this defensively without checking state first.
+
+    There is deliberately no "undeclare" subcommand. Removing a declared
+    gate is possible only through `override --gate gate3/gate4` (see
+    cmd_override), which is at least as visible as re-stamping a hash: a
+    literal --confirm OVERRIDE, a required --reason, and a permanent
+    history entry. A gate a sprint declared cannot quietly stop applying."""
+    which = GATE_KEYS[args.which]
+    with locked(f"sprint-{args.id}"):
+        state = load_state(args.id)
+        if state["phase"] in ("complete", "aborted"):
+            die(f"Sprint {args.id} is {state['phase']}, nothing to declare a gate against.")
+        state.setdefault("human_gates", default_human_gates())
+        gate = state["human_gates"].setdefault(which, {"declared": False, "result": None, "rounds": 0})
+        if gate["declared"]:
+            print(f"{GATE_LABELS[which]} is already declared for sprint {args.id}. No change.")
+            return
+        gate["declared"] = True
+        log_event(state, "dev-team", "human_gate_declared", GATE_LABELS[which])
+        save_state(args.id, state)
+    print(f"{GATE_LABELS[which]} declared for sprint {args.id}.")
+    print(f"/sprint-complete will now refuse to close this sprint until a PASS is recorded "
+          f"for it via /sprint-record-gate.")
+
+
+def cmd_record_gate(args) -> None:
+    """Records a verdict for a declared human gate. Mirrors cmd_qa1 and
+    cmd_groundtruth's shape deliberately (--verdict, --notes/--notes-file,
+    same VALID_VERDICTS, same "{verdict}: {notes}" history detail format)
+    so the same tooling and conventions apply.
+
+    FAIL/CONDITIONAL while the sprint sits at complete_ready is Sprint 12's
+    Q1 answer: the "reopen" edge. Phase resets to dev_build — not
+    groundtruth_live, which would misrepresent a live test that never
+    actually failed (Sprint 9's exact problem) — and both QA1 hash fields
+    are nulled, the same defensive move cmd_qa1's own FAIL branch already
+    makes, so a later dev-done/ship cannot be satisfied by a stale PASS
+    from before whatever this gate found. GroundTruth's own PASS event
+    stays untouched in history; the reopen is logged as its own distinct
+    event, human_gate_reopened, naming which gate and why — never folded
+    into a fabricated live_test entry.
+
+    A FAIL/CONDITIONAL recorded before complete_ready (the gate was
+    checked early, mid-build) does not reopen anything — there is nothing
+    to reopen, the sprint's normal loop hasn't reached complete_ready yet.
+    It still blocks cmd_complete once that point is reached, same as any
+    other declared gate without a fresh PASS on record.
+
+    A PASS is always available regardless of what the notes say — Sprint
+    12 Q5's answer. Whether a finding is a defect (Sprint 9: violates a
+    requirement, must reopen) or a judgement call that doesn't (Sprint 11:
+    the headline preference, closed at its shipped commit and handled as
+    separate work) is decided by the human recording the verdict, at the
+    moment they record it: PASS if it doesn't, FAIL/CONDITIONAL if it
+    does. No separate mechanism is needed for the non-defect path — not
+    reopening is simply what recording a PASS already does."""
+    which = GATE_KEYS[args.which]
+    verdict = args.verdict.upper()
+    if verdict not in VALID_VERDICTS:
+        die(f"Verdict must be one of {sorted(VALID_VERDICTS)}.")
+
+    with locked(f"sprint-{args.id}"):
+        state = load_state(args.id)
+        if state["phase"] in ("complete", "aborted"):
+            die(f"Sprint {args.id} is {state['phase']}, nothing to record a gate result against.")
+        state.setdefault("human_gates", default_human_gates())
+        gate = state["human_gates"].setdefault(which, {"declared": False, "result": None, "rounds": 0})
+        if not gate["declared"]:
+            die(f"{GATE_LABELS[which]} has not been declared for sprint {args.id}. "
+                "Run /sprint-declare-gate first if this gate actually applies to this sprint.")
+
+        notes = resolve_text(args.notes, args.notes_file)
+        gate["result"] = verdict
+        gate["rounds"] += 1
+        log_event(state, "dev-team", "human_gate_recorded", f"{which}: {verdict}: {notes}")
+
+        reopened = False
+        if verdict in ("FAIL", "CONDITIONAL") and state["phase"] == "complete_ready":
+            state["phase"] = "dev_build"
+            state["qa1_audit_file_hash"] = None
+            state["qa1_audited_tree_hash"] = None
+            log_event(state, "dev-team", "human_gate_reopened",
+                      f"{GATE_LABELS[which]} recorded {verdict}, reopening from complete_ready "
+                      "to dev_build. QA1 hash fields cleared — a fresh /sprint-qa1 audit is "
+                      "required before this can reach dev_agreed_done again.")
+            reopened = True
+        save_state(args.id, state)
+
+    print(f"{GATE_LABELS[which]}: {verdict} recorded for sprint {args.id} (round {gate['rounds']}).")
+    if reopened:
+        print(f"Sprint {args.id} reopened: phase is back to dev_build. GroundTruth's earlier "
+              "PASS stays on record — this was not a live-test failure. Fix the finding, then "
+              "run /sprint-qa1 again (a fresh audit is required, the old hash was cleared) and "
+              "continue through the normal loop.")
+    elif verdict == "PASS":
+        print("If this was the last declared gate without a PASS on record, "
+              f"/sprint-complete may now proceed once the user authorizes it.")
+    else:
+        print(f"{verdict} recorded but the sprint isn't at complete_ready, so nothing to reopen "
+              "— it's already earlier in the loop. This will still block /sprint-complete "
+              "until a fresh PASS is recorded for this gate.")
+
+
 def cmd_complete(args) -> None:
     # Both gates passing is necessary but never sufficient on its own to
     # close a sprint, that only tells you the code is ready, not that the
@@ -663,6 +844,22 @@ def cmd_complete(args) -> None:
             missing.append("QA1 first audit has not passed")
         if state["groundtruth_result"] != "PASS":
             missing.append("GroundTruth live test has not passed")
+        # Never fabricates or defaults a human-gate result, same principle
+        # cmd_override's own docstring states for the hash gates: the real
+        # precondition (a PASS actually on record) has to be true first.
+        # There is no override for this check, same as the rest of
+        # cmd_complete — a recorded FAIL/CONDITIONAL is a legitimate
+        # result, not something to wave through, distinguished below from
+        # "never recorded at all" so the message tells you which case
+        # you're in.
+        for long_key, label in GATE_LABELS.items():
+            gate = get_gate(state, long_key)
+            if not gate["declared"]:
+                continue
+            if gate["result"] is None:
+                missing.append(f"{label} is declared but has no recorded result")
+            elif gate["result"] != "PASS":
+                missing.append(f"{label} last recorded {gate['result']}, needs a fresh PASS")
         if state["phase"] != "complete_ready" or missing:
             die("Sprint is not ready to close:\n  - " + "\n  - ".join(missing or [f"phase is '{state['phase']}'"]))
 
@@ -680,11 +877,16 @@ def cmd_complete(args) -> None:
         entry["status"] = "done"
         save_registry(reg)
 
+        declared_gate_labels = [
+            label for long_key, label in GATE_LABELS.items() if get_gate(state, long_key)["declared"]
+        ]
+
         state["phase"] = "complete"
         state["completed"] = now()
         log_event(state, "dev-team", "sprint_closed", f"user_said={user_said}")
         save_state(args.id, state)
-    print(f"Sprint {args.id} closed. Confirmed: QA1 audit, GroundTruth live test, user authorization.")
+    confirmed = ["QA1 audit", "GroundTruth live test", "user authorization"] + declared_gate_labels
+    print(f"Sprint {args.id} closed. Confirmed: {', '.join(confirmed)}.")
 
 
 def cmd_abort(args) -> None:
@@ -775,8 +977,32 @@ def cmd_override(args) -> None:
             print("/sprint-ship will now proceed normally for a commit matching that "
                   "content. This override is permanently recorded in the sprint's history.")
 
+        elif args.gate in ("gate3", "gate4"):
+            # The only sanctioned way to un-declare a human gate (Sprint 12
+            # Q2): "not silently removable" means removing one must be at
+            # least as visible as re-stamping a hash, so this reuses the
+            # exact same --confirm OVERRIDE / --reason / permanent-history
+            # machinery rather than inventing a separate, quieter path.
+            # Deliberately does not clear the gate's recorded result or
+            # round count — that history stays true even after the gate
+            # stops being required.
+            which = GATE_KEYS[args.gate]
+            state.setdefault("human_gates", default_human_gates())
+            gate = state["human_gates"].setdefault(which, {"declared": False, "result": None, "rounds": 0})
+            if not gate["declared"]:
+                die(f"{GATE_LABELS[which]} is not declared for sprint {args.id}. Nothing to undeclare.")
+            gate["declared"] = False
+            log_event(state, "human-override", "human_gate_undeclared",
+                      f"reason={reason} | gate={GATE_LABELS[which]} | "
+                      f"prior_result={gate['result']} | prior_rounds={gate['rounds']}")
+            save_state(args.id, state)
+            print(f"Sprint {args.id}: {GATE_LABELS[which]} undeclared.")
+            print("/sprint-complete no longer requires a result for it. This override is "
+                  "permanently recorded in the sprint's history, including the gate's prior "
+                  "recorded result, if any.")
+
         else:
-            die(f"Unknown --gate '{args.gate}'. Valid gates: dev-done-hash, ship-hash.")
+            die(f"Unknown --gate '{args.gate}'. Valid gates: dev-done-hash, ship-hash, gate3, gate4.")
 
 
 def cmd_list(args) -> None:
@@ -1013,6 +1239,20 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--notes-file", help="Read notes from this file instead of the command line.")
     s.set_defaults(func=cmd_groundtruth)
 
+    s = sub.add_parser("declare-gate")
+    s.add_argument("id", type=int)
+    s.add_argument("--which", required=True, choices=["gate3", "gate4"],
+                    help="gate3 = human AT pass (NVDA etc.); gate4 = legal-content review.")
+    s.set_defaults(func=cmd_declare_gate)
+
+    s = sub.add_parser("record-gate")
+    s.add_argument("id", type=int)
+    s.add_argument("--which", required=True, choices=["gate3", "gate4"])
+    s.add_argument("--verdict", required=True)
+    s.add_argument("--notes", default="")
+    s.add_argument("--notes-file", help="Read notes from this file instead of the command line.")
+    s.set_defaults(func=cmd_record_gate)
+
     s = sub.add_parser("complete")
     s.add_argument("id", type=int)
     s.add_argument("--user-said", default="",
@@ -1034,7 +1274,7 @@ def build_parser() -> argparse.ArgumentParser:
     # via / autocomplete, is intentional.
     s = sub.add_parser("override")
     s.add_argument("id", type=int)
-    s.add_argument("--gate", required=True, choices=["dev-done-hash", "ship-hash"])
+    s.add_argument("--gate", required=True, choices=["dev-done-hash", "ship-hash", "gate3", "gate4"])
     s.add_argument("--reason", default="")
     s.add_argument("--reason-file", help="Read the reason from this file instead of the command line.")
     s.add_argument("--confirm", required=True, help="Must be exactly the literal word OVERRIDE.")

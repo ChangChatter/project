@@ -492,4 +492,241 @@ grep -q "doesn't match what Pipeman actually shipped" /tmp/out.txt && \
   fail "no-ship-recorded refusal must be a distinct message from the mismatch refusal, not reuse it"
 rm -f /tmp/out.txt
 
+# ============================================================================
+# Sprint 12: human verification gates (declare-gate / record-gate / the
+# complete_ready -> dev_build reopen edge). Everything below still runs
+# inside the same sandbox as everything above — no new test here writes to
+# the invoking repo's docs/sprints/, same discipline as the rest of this file.
+# ============================================================================
+
+echo "== a sprint that never declares a human gate is completely unaffected =="
+SPRINT_NO_GATE=$(new_sprint "No gate sprint")
+$SCRIPT start "$SPRINT_NO_GATE" > /dev/null
+git commit -q --allow-empty -m "sprint $SPRINT_NO_GATE work"
+$SCRIPT qa1 "$SPRINT_NO_GATE" --verdict PASS --notes ok > /dev/null
+$SCRIPT dev-done "$SPRINT_NO_GATE" > /dev/null
+NO_GATE_COMMIT=$(git rev-parse HEAD)
+$SCRIPT ship "$SPRINT_NO_GATE" --commit "$NO_GATE_COMMIT" > /dev/null
+$SCRIPT groundtruth "$SPRINT_NO_GATE" --deployed-commit "$NO_GATE_COMMIT" --verdict PASS --notes ok > /dev/null
+NO_GATE_STATUS=$($SCRIPT status "$SPRINT_NO_GATE")
+echo "$NO_GATE_STATUS" | grep -qi "gate 3" && fail "status printed a gate 3 line for a sprint that never declared one"
+echo "$NO_GATE_STATUS" | grep -qi "gate 4" && fail "status printed a gate 4 line for a sprint that never declared one"
+$SCRIPT complete "$SPRINT_NO_GATE" --user-said "close it, no human gates apply" > /dev/null || \
+  fail "complete refused a sprint with zero declared human gates"
+
+echo "== declare-gate / record-gate reject a bad --which or --verdict =="
+SPRINT_GATE_BAD=$(new_sprint "Bad gate args sprint")
+$SCRIPT start "$SPRINT_GATE_BAD" > /dev/null
+$SCRIPT declare-gate "$SPRINT_GATE_BAD" --which gate5 > /tmp/out.txt 2>&1 && fail "declare-gate accepted an invalid --which" || true
+grep -qi "invalid choice" /tmp/out.txt || fail "declare-gate bad --which error message missing"
+$SCRIPT declare-gate "$SPRINT_GATE_BAD" --which gate3 > /dev/null
+$SCRIPT record-gate "$SPRINT_GATE_BAD" --which gate3 --verdict MAYBE > /tmp/out.txt 2>&1 && fail "record-gate accepted a bad verdict" || true
+grep -q "Verdict must be one of" /tmp/out.txt || fail "record-gate bad-verdict error message missing"
+rm -f /tmp/out.txt
+
+echo "== record-gate refuses a gate that was never declared =="
+SPRINT_UNDECLARED=$(new_sprint "Undeclared gate sprint")
+$SCRIPT start "$SPRINT_UNDECLARED" > /dev/null
+$SCRIPT record-gate "$SPRINT_UNDECLARED" --which gate4 --verdict PASS --notes "trying to skip declaring it" \
+  > /tmp/out.txt 2>&1 && fail "record-gate accepted a verdict for an undeclared gate" || true
+grep -q "has not been declared" /tmp/out.txt || fail "record-gate undeclared-gate refusal message missing"
+rm -f /tmp/out.txt
+
+echo "== declare-gate is idempotent: declaring twice does not double-log or error =="
+SPRINT_IDEMPOTENT=$(new_sprint "Idempotent declare sprint")
+$SCRIPT start "$SPRINT_IDEMPOTENT" > /dev/null
+$SCRIPT declare-gate "$SPRINT_IDEMPOTENT" --which gate3 > /dev/null || fail "first declare-gate call failed"
+$SCRIPT declare-gate "$SPRINT_IDEMPOTENT" --which gate3 > /tmp/out.txt 2>&1 || fail "second declare-gate call on an already-declared gate should not error"
+grep -q "already declared" /tmp/out.txt || fail "idempotent declare-gate should say it's already declared"
+IDEMPOTENT_DECLARE_COUNT=$($SCRIPT status "$SPRINT_IDEMPOTENT" --verbose | grep -c "human_gate_declared")
+[ "$IDEMPOTENT_DECLARE_COUNT" = "1" ] || fail "declare-gate called twice should log exactly one human_gate_declared event, got $IDEMPOTENT_DECLARE_COUNT"
+rm -f /tmp/out.txt
+
+echo "== declare-gate / record-gate are addable mid-build, before qa1 has even run =="
+SPRINT_MIDBUILD=$(new_sprint "Mid-build gate sprint")
+$SCRIPT start "$SPRINT_MIDBUILD" > /dev/null
+$SCRIPT declare-gate "$SPRINT_MIDBUILD" --which gate4 > /dev/null || fail "declare-gate refused during dev_build"
+$SCRIPT status "$SPRINT_MIDBUILD" | grep -qi "gate 4" || fail "status did not show the mid-build-declared gate 4"
+
+echo "== a declared gate with no recorded result blocks /sprint-complete, naming the gate =="
+git commit -q --allow-empty -m "sprint $SPRINT_MIDBUILD work"
+$SCRIPT qa1 "$SPRINT_MIDBUILD" --verdict PASS --notes ok > /dev/null
+$SCRIPT dev-done "$SPRINT_MIDBUILD" > /dev/null
+MIDBUILD_COMMIT=$(git rev-parse HEAD)
+$SCRIPT ship "$SPRINT_MIDBUILD" --commit "$MIDBUILD_COMMIT" > /dev/null
+$SCRIPT groundtruth "$SPRINT_MIDBUILD" --deployed-commit "$MIDBUILD_COMMIT" --verdict PASS --notes ok > /dev/null
+$SCRIPT complete "$SPRINT_MIDBUILD" --user-said "trying to close with gate 4 unrecorded" \
+  > /tmp/out.txt 2>&1 && fail "complete succeeded with a declared gate that has no recorded result" || true
+grep -qi "Gate 4" /tmp/out.txt || fail "complete's refusal should name Gate 4 specifically"
+grep -q "no recorded result" /tmp/out.txt || fail "complete's refusal should say the gate has no recorded result"
+
+echo "== recording a PASS for the last outstanding declared gate lets /sprint-complete proceed =="
+$SCRIPT record-gate "$SPRINT_MIDBUILD" --which gate4 --verdict PASS --notes "Chang approved, one copy change" > /dev/null
+$SCRIPT complete "$SPRINT_MIDBUILD" --user-said "close it, gate 4 approved" > /dev/null || \
+  fail "complete still refused after the only declared gate recorded a PASS"
+$SCRIPT status "$SPRINT_MIDBUILD" --verbose | grep -q "Chang approved, one copy change" || \
+  fail "the gate-4 notes were not recorded in the sprint's history"
+rm -f /tmp/out.txt
+
+echo "== a gate FAIL recorded before complete_ready blocks completion but does not reopen anything (nothing to reopen yet) =="
+SPRINT_EARLY_FAIL=$(new_sprint "Early gate fail sprint")
+$SCRIPT start "$SPRINT_EARLY_FAIL" > /dev/null
+$SCRIPT declare-gate "$SPRINT_EARLY_FAIL" --which gate3 > /dev/null
+$SCRIPT record-gate "$SPRINT_EARLY_FAIL" --which gate3 --verdict FAIL --notes "early check, found an issue" > /tmp/out.txt 2>&1 || \
+  fail "record-gate refused a FAIL verdict recorded during dev_build"
+grep -q "nothing to reopen" /tmp/out.txt || fail "record-gate should say there's nothing to reopen when recorded before complete_ready"
+$SCRIPT status "$SPRINT_EARLY_FAIL" | grep -q "Phase: dev_build" || fail "phase should still be dev_build, an early gate FAIL must not invent a phase change"
+rm -f /tmp/out.txt
+
+echo "== THE REOPEN EDGE: a gate FAIL recorded at complete_ready sends the sprint back to dev_build, not groundtruth_live =="
+SPRINT_REOPEN=$(new_sprint "Reopen sprint")
+$SCRIPT start "$SPRINT_REOPEN" > /dev/null
+$SCRIPT declare-gate "$SPRINT_REOPEN" --which gate3 > /dev/null
+git commit -q --allow-empty -m "sprint $SPRINT_REOPEN initial work"
+$SCRIPT qa1 "$SPRINT_REOPEN" --verdict PASS --notes "looked good" > /dev/null
+$SCRIPT dev-done "$SPRINT_REOPEN" > /dev/null
+REOPEN_COMMIT_1=$(git rev-parse HEAD)
+$SCRIPT ship "$SPRINT_REOPEN" --commit "$REOPEN_COMMIT_1" > /dev/null
+$SCRIPT groundtruth "$SPRINT_REOPEN" --deployed-commit "$REOPEN_COMMIT_1" --verdict PASS --notes "GT looks clean" > /dev/null
+$SCRIPT status "$SPRINT_REOPEN" | grep -q "Phase: complete_ready" || fail "sprint should be complete_ready before the gate 3 check runs"
+
+$SCRIPT record-gate "$SPRINT_REOPEN" --which gate3 --verdict FAIL --notes "NVDA found a real regression" > /tmp/out.txt 2>&1 || \
+  fail "record-gate refused a FAIL verdict at complete_ready"
+grep -q "reopened" /tmp/out.txt || fail "record-gate should announce the reopen"
+# Not a fragile substring match on the print message here — the precise
+# checks below (GroundTruth's PASS still on record, zero live_test FAIL
+# entries in history) are what actually prove this property.
+
+REOPEN_STATUS=$($SCRIPT status "$SPRINT_REOPEN")
+echo "$REOPEN_STATUS" | grep -q "Phase: dev_build" || fail "sprint should be back in dev_build after the reopen, not groundtruth_live or any other phase"
+echo "$REOPEN_STATUS" | grep -q "GroundTruth live result: PASS" || \
+  fail "GroundTruth's original PASS must stay on record after a reopen — it never actually failed a live test"
+
+REOPEN_VERBOSE=$($SCRIPT status "$SPRINT_REOPEN" --verbose)
+echo "$REOPEN_VERBOSE" | grep -q "human_gate_reopened" || fail "reopen must be logged as its own distinct event, human_gate_reopened"
+REOPEN_LIVE_TEST_FAILS=$(echo "$REOPEN_VERBOSE" | grep "live_test" | grep -c "FAIL" || true)
+[ "$REOPEN_LIVE_TEST_FAILS" = "0" ] || fail "reopen must never be recorded as a fabricated live_test FAIL entry"
+
+echo "== Q3: the reopen clears both QA1 hash fields directly (checked in the state file, not inferred from a refusal message dominated by the phase check) =="
+$SCRIPT dev-done "$SPRINT_REOPEN" > /tmp/out.txt 2>&1 && fail "dev-done succeeded right after a reopen, with no fresh QA1 audit" || true
+grep -q "needs a QA1 PASS on the first audit" /tmp/out.txt || fail "post-reopen dev-done should refuse on phase (it's dev_build now), same as any other dev_build sprint"
+REOPEN_STATE="docs/sprints/state/sprint-${SPRINT_REOPEN}.json"
+python3 -c "
+import json, sys
+s = json.load(open('$REOPEN_STATE'))
+assert s['qa1_audit_file_hash'] is None, f\"qa1_audit_file_hash should be null after reopen, got {s['qa1_audit_file_hash']!r}\"
+assert s['qa1_audited_tree_hash'] is None, f\"qa1_audited_tree_hash should be null after reopen, got {s['qa1_audited_tree_hash']!r}\"
+assert s['qa1_audit_result'] == 'PASS', \"qa1_audit_result is history, not a hash field, and must NOT be reset by the reopen\"
+" || fail "reopen did not correctly null both QA1 hash fields while leaving qa1_audit_result alone"
+rm -f /tmp/out.txt
+
+echo "== completing the reopened sprint: fresh QA1, ship, GroundTruth, then a fresh gate-3 PASS =="
+git commit -q --allow-empty -m "fix for sprint $SPRINT_REOPEN, addresses the NVDA finding"
+$SCRIPT qa1 "$SPRINT_REOPEN" --verdict PASS --notes "re-audited the fix" > /dev/null
+$SCRIPT dev-done "$SPRINT_REOPEN" > /dev/null || fail "dev-done still refused after a fresh QA1 PASS post-reopen"
+REOPEN_COMMIT_2=$(git rev-parse HEAD)
+$SCRIPT ship "$SPRINT_REOPEN" --commit "$REOPEN_COMMIT_2" > /dev/null
+$SCRIPT groundtruth "$SPRINT_REOPEN" --deployed-commit "$REOPEN_COMMIT_2" --verdict PASS --notes "re-tested, clean" > /dev/null
+$SCRIPT status "$SPRINT_REOPEN" | grep -q "Phase: complete_ready" || fail "sprint should reach complete_ready again after the full post-reopen loop"
+
+$SCRIPT complete "$SPRINT_REOPEN" --user-said "trying to close before gate 3 is re-verified" \
+  > /tmp/out.txt 2>&1 && fail "complete succeeded while gate 3's last recorded result was still the old FAIL" || true
+grep -qi "Gate 3" /tmp/out.txt || fail "complete's refusal should still name gate 3 (its last result is FAIL, not PASS)"
+grep -q "needs a fresh PASS" /tmp/out.txt || fail "complete should distinguish 'recorded FAIL, needs a fresh PASS' from 'never recorded'"
+
+$SCRIPT record-gate "$SPRINT_REOPEN" --which gate3 --verdict PASS --notes "NVDA re-verified clean" > /dev/null
+$SCRIPT complete "$SPRINT_REOPEN" --user-said "close it, gate 3 re-verified clean" > /dev/null || \
+  fail "complete still refused after gate 3's fresh PASS"
+REOPEN_RECORD_COUNT=$($SCRIPT status "$SPRINT_REOPEN" --verbose | grep -c "human_gate_recorded")
+[ "$REOPEN_RECORD_COUNT" = "2" ] || \
+  fail "gate 3 should have exactly two human_gate_recorded events on record (the FAIL and the fresh PASS), got $REOPEN_RECORD_COUNT"
+rm -f /tmp/out.txt
+
+echo "== declare-gate / record-gate refuse once a sprint is complete or aborted =="
+$SCRIPT declare-gate "$SPRINT_REOPEN" --which gate4 > /tmp/out.txt 2>&1 && fail "declare-gate succeeded on an already-complete sprint" || true
+grep -qi "nothing to declare" /tmp/out.txt || fail "declare-gate-on-complete refusal message missing"
+$SCRIPT record-gate "$SPRINT_REOPEN" --which gate3 --verdict PASS --notes "trying again" \
+  > /tmp/out.txt 2>&1 && fail "record-gate succeeded on an already-complete sprint" || true
+grep -qi "nothing to record" /tmp/out.txt || fail "record-gate-on-complete refusal message missing"
+
+SPRINT_ABORTED_GATE=$(new_sprint "Aborted gate sprint")
+$SCRIPT start "$SPRINT_ABORTED_GATE" > /dev/null
+$SCRIPT abort "$SPRINT_ABORTED_GATE" --reason "test" > /dev/null
+$SCRIPT declare-gate "$SPRINT_ABORTED_GATE" --which gate3 > /tmp/out.txt 2>&1 && fail "declare-gate succeeded on an aborted sprint" || true
+grep -qi "nothing to declare" /tmp/out.txt || fail "declare-gate-on-aborted refusal message missing"
+rm -f /tmp/out.txt
+
+echo "== override un-declares a gate (not silently removable): requires --confirm OVERRIDE and --reason, permanently logged =="
+SPRINT_UNDECLARE=$(new_sprint "Undeclare override sprint")
+$SCRIPT start "$SPRINT_UNDECLARE" > /dev/null
+$SCRIPT declare-gate "$SPRINT_UNDECLARE" --which gate4 > /dev/null
+
+$SCRIPT override "$SPRINT_UNDECLARE" --gate gate4 --confirm OVERRIDE > /tmp/out.txt 2>&1 && fail "gate override succeeded with an empty --reason" || true
+grep -q -- "--reason is required" /tmp/out.txt || fail "gate-undeclare empty-reason refusal message missing"
+$SCRIPT override "$SPRINT_UNDECLARE" --gate gate4 --reason "test" --confirm YES > /tmp/out.txt 2>&1 && fail "gate override succeeded with the wrong --confirm value" || true
+grep -q "must be exactly the literal word OVERRIDE" /tmp/out.txt || fail "gate-undeclare wrong-confirm refusal message missing"
+
+$SCRIPT override "$SPRINT_UNDECLARE" --gate gate4 --reason "scope changed, no legal content in this sprint after all" --confirm OVERRIDE > /dev/null || \
+  fail "gate override refused despite a valid --confirm and --reason"
+$SCRIPT status "$SPRINT_UNDECLARE" | grep -qi "gate 4" && fail "status should no longer show gate 4 after it was undeclared"
+UNDECLARE_VERBOSE=$($SCRIPT status "$SPRINT_UNDECLARE" --verbose)
+echo "$UNDECLARE_VERBOSE" | grep -q "human_gate_undeclared" || fail "undeclare was not recorded in the sprint's history"
+echo "$UNDECLARE_VERBOSE" | grep -q "scope changed, no legal content in this sprint after all" || fail "undeclare reason was not recorded in the sprint's history"
+git commit -q --allow-empty -m "sprint $SPRINT_UNDECLARE work"
+$SCRIPT qa1 "$SPRINT_UNDECLARE" --verdict PASS --notes ok > /dev/null
+$SCRIPT dev-done "$SPRINT_UNDECLARE" > /dev/null
+UNDECLARE_COMMIT=$(git rev-parse HEAD)
+$SCRIPT ship "$SPRINT_UNDECLARE" --commit "$UNDECLARE_COMMIT" > /dev/null
+$SCRIPT groundtruth "$SPRINT_UNDECLARE" --deployed-commit "$UNDECLARE_COMMIT" --verdict PASS --notes ok > /dev/null
+$SCRIPT complete "$SPRINT_UNDECLARE" --user-said "close it, gate 4 no longer applies" > /dev/null || \
+  fail "complete refused even though the only declared gate was cleanly undeclared"
+rm -f /tmp/out.txt
+
+echo "== override refuses to undeclare a gate that was never declared =="
+SPRINT_UNDECLARE_NEVER=$(new_sprint "Undeclare never-declared sprint")
+$SCRIPT start "$SPRINT_UNDECLARE_NEVER" > /dev/null
+$SCRIPT override "$SPRINT_UNDECLARE_NEVER" --gate gate3 --reason "trying to undeclare something never declared" --confirm OVERRIDE \
+  > /tmp/out.txt 2>&1 && fail "gate override undeclared a gate that was never declared" || true
+grep -q "is not declared" /tmp/out.txt || fail "undeclare-never-declared refusal message missing"
+rm -f /tmp/out.txt
+
+echo "== backward compatibility: a state file predating human_gates loads cleanly through status, list, and gates =="
+SPRINT_PRE_GATES=$(new_sprint "Pre-gates sprint")
+$SCRIPT start "$SPRINT_PRE_GATES" > /dev/null
+PRE_GATES_STATE="docs/sprints/state/sprint-${SPRINT_PRE_GATES}.json"
+# Simulate a state file written by a version of this script from before
+# human_gates existed at all, same technique as SPRINT_LEGACY above.
+python3 -c "
+import json
+p = '$PRE_GATES_STATE'
+s = json.load(open(p))
+del s['human_gates']
+json.dump(s, open(p, 'w'), indent=2)
+"
+$SCRIPT status "$SPRINT_PRE_GATES" > /dev/null || fail "status crashed on a state file with no human_gates key at all"
+$SCRIPT status "$SPRINT_PRE_GATES" --verbose > /dev/null || fail "status --verbose crashed on a state file with no human_gates key"
+$SCRIPT list > /dev/null || fail "list crashed with a pre-human_gates state file present"
+$SCRIPT gates > /dev/null 2>&1 || fail "gates crashed with a pre-human_gates state file present"
+git commit -q --allow-empty -m "sprint $SPRINT_PRE_GATES work"
+$SCRIPT qa1 "$SPRINT_PRE_GATES" --verdict PASS --notes ok > /dev/null
+$SCRIPT dev-done "$SPRINT_PRE_GATES" > /dev/null
+PRE_GATES_COMMIT=$(git rev-parse HEAD)
+$SCRIPT ship "$SPRINT_PRE_GATES" --commit "$PRE_GATES_COMMIT" > /dev/null
+$SCRIPT groundtruth "$SPRINT_PRE_GATES" --deployed-commit "$PRE_GATES_COMMIT" --verdict PASS --notes ok > /dev/null
+$SCRIPT complete "$SPRINT_PRE_GATES" --user-said "close it, this sprint predates human gates entirely" > /dev/null || \
+  fail "complete refused a sprint whose state file predates the human_gates field"
+echo "== backward compatibility: declare-gate/record-gate also work on a state file predating the field =="
+SPRINT_PRE_GATES_2=$(new_sprint "Pre-gates sprint 2")
+$SCRIPT start "$SPRINT_PRE_GATES_2" > /dev/null
+PRE_GATES_STATE_2="docs/sprints/state/sprint-${SPRINT_PRE_GATES_2}.json"
+python3 -c "
+import json
+p = '$PRE_GATES_STATE_2'
+s = json.load(open(p))
+del s['human_gates']
+json.dump(s, open(p, 'w'), indent=2)
+"
+$SCRIPT declare-gate "$SPRINT_PRE_GATES_2" --which gate3 > /dev/null || fail "declare-gate crashed on a state file with no human_gates key"
+$SCRIPT record-gate "$SPRINT_PRE_GATES_2" --which gate3 --verdict PASS --notes ok > /dev/null || fail "record-gate crashed on a state file with no human_gates key"
+
 echo "ALL SMOKE TESTS PASSED"

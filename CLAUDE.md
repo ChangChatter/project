@@ -87,8 +87,28 @@ on that handoff.
 /sprint-groundtruth <N> --deployed-commit <sha> --verdict ...   GroundTruth
         │  FAIL/CONDITIONAL → Dev Team fixes, Pipeman /sprint-reship, loop
         │  PASS ↓
+   complete_ready ─── /sprint-declare-gate <N> --which gate3|gate4   Dev Team
+        │             (any phase, addable mid-sprint — shown here because
+        │              this is where its result is usually checked)
+        │  /sprint-record-gate <N> --which gate3|gate4 --verdict ...
+        │  FAIL/CONDITIONAL at complete_ready → REOPENS to dev_build (not
+        │  groundtruth_live — GroundTruth's PASS stands, it never failed),
+        │  QA1 hash fields cleared, normal loop runs again
+        │  PASS on every declared gate ↓
 /sprint-complete <N> --user-said "..."       Dev Team 1/2 closes it, only when told to
 ```
+
+**Human verification gates (Sprint 12).** Two named gates exist —
+gate3 (a human accessibility pass, e.g. NVDA) and gate4 (legal-content
+review) — for exactly the case CLAUDE.md's "a gate cannot be assigned a
+check it has no instrument for" section describes: neither QA1 nor
+GroundTruth has the instrument for these. Most sprints declare neither;
+`/sprint-declare-gate` only applies when a sprint's own file says one
+does. A declared gate blocks `/sprint-complete` until it has a fresh
+PASS on record — see `/sprint-declare-gate`'s and `/sprint-record-gate`'s
+own command files for the mechanics, and Sprint 12's Dev Notes for why
+each design choice (the reopen edge, the hash-clearing, the
+non-defect/defect distinction) is what it is.
 
 A sprint is never complete just because Dev Team said so mid-build. It's only
 complete once QA1's static audit AND GroundTruth's live test have both
@@ -269,9 +289,25 @@ deliberate call, not an oversight:
 
 If a change to this repo's own tooling ever turns out to need something
 sprint-shaped (recorded requirements, a documented audit trail across
-multiple rounds), that's a case for `/sprint-new` with GroundTruth's step
-explicitly skipped and noted why, not a case for forcing a live-test step
-that doesn't apply.
+multiple rounds), run it through the normal `/sprint-new` lifecycle —
+**not** with GroundTruth's step "explicitly skipped." An earlier version
+of this section said that, and it is not executable: `cmd_complete`
+requires `groundtruth_result == "PASS"`, and `complete_ready` is reachable
+only through `cmd_groundtruth`, so a sprint that skips gate 2 outright can
+never close. This is the same class of error CLAUDE.md already documents
+about itself elsewhere (the unexecutable "route back through
+`/sprint-qa1`" instruction this file used to carry).
+
+What Sprint 12 actually did, as the worked example: gate 2 stays in the
+lifecycle but is scoped **honestly**, not dressed up — the same pattern
+this file already prescribes for a logic-only product sprint with no UI
+(see "Writing acceptance criteria against the right gate" below). GroundTruth
+confirms non-regression (the deployed app still builds and loads, existing
+flows still work) plus a **scope-violation trap**: if this sprint's diff
+touched any product code (`app/`, `lib/`, `components/`, `data/`) or its
+output became user-visible, that is a FAIL, because a tooling sprint
+acquiring a product surface means it did something outside its own scope.
+That version can actually fail, which "skipped" cannot.
 
 ## Project standards
 
@@ -485,6 +521,22 @@ the re-audit passes — `dev_done` then `ship`, with `ship`'s tree-hash check
 and `last_shipped_commit` both in play. It needs a real design and an
 independent review, per `## Changes to this repo's own tooling`. It is not
 a Master Controller decree, and it should not be done mid-sprint.
+
+**Partly, not fully, retired by Sprint 12.** That sprint answered the
+general version of the "what happens after the re-audit passes" question
+above — for a *different* trigger (a declared human gate finding
+something after `complete_ready`, not an ARIA-touching reship) but the
+same underlying hazard: reopening a late-phase sprint back into the fix
+loop without leaving a stale QA1 hash a later `dev_done`/`ship` would
+accept. Its answer — reopen to `dev_build`, null both hash fields, let the
+normal loop re-run rather than inventing a shortcut — is a real, reviewed,
+independently-tested precedent for that sub-problem, worked through
+exactly the way this note says it needs to be. It does not answer the
+ARIA-specific question this note poses (a `groundtruth_live -> qa1_audit`
+transition, or a reship-time guard, specifically for the reship loop) —
+Sprint 12 was explicitly scoped not to attempt that, on purpose, so this
+stays open. What is retired is the "needs a real design" half of the
+objection; what remains is the ARIA-specific instantiation.
 
 **Documented is not verified.** Splitting a requirement across gates has a
 second failure mode, and it is the one that actually cost a round. When the
