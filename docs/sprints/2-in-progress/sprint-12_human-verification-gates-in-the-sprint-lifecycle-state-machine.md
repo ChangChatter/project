@@ -264,7 +264,7 @@ a dedicated new phase (e.g. `human_gates_pending`) sitting between
 place a phase is currently matched (7 sites before this diff) and its own
 handling in `cmd_status`, in exchange for answering a question `cmd_status`
 already answers directly without it: whether any declared gate is still
-missing a fresh PASS (see Q4) is printed per-gate regardless of which
+missing a PASS (see Q4) is printed per-gate regardless of which
 phase the sprint is in, so a phase string whose only job would be signaling
 "gate results outstanding" duplicates information already visible. Reusing
 the existing, already-tested `dev_build` phase is the smaller diff for the
@@ -285,8 +285,8 @@ reached `complete_ready` yet, so resetting to `dev_build` would either be a
 no-op (already there) or would discard progress through `qa1_audit` /
 `dev_agreed_done` / `groundtruth_live` for a reason unrelated to those
 phases' own gates. It still blocks `cmd_complete` once the sprint does
-reach `complete_ready`, the same as any other declared gate without a
-fresh PASS — see Q4.
+reach `complete_ready`, the same as any other declared gate with no PASS
+on record — see Q4.
 
 **Q2 — per-sprint, two fixed gates, not a plugin system.** `human_gates` in
 state is a two-key dict (`gate3_nvda`, `gate4_legal`), each
@@ -341,7 +341,7 @@ back-edge in effect if read carelessly).
 override.** Extends the existing `missing` list (already checking QA1 and
 GroundTruth) with one entry per declared gate whose `result` isn't `PASS`
 — distinguishing, in the message itself, "declared but has no recorded
-result" from "last recorded {FAIL|CONDITIONAL}, needs a fresh PASS," so
+result" from "last recorded {FAIL|CONDITIONAL}, needs a PASS recorded," so
 the person reading the refusal knows which case they're in rather than
 being told a flat "not ready." There is no override for this check, for
 the identical reason `cmd_complete` already has none for a missing
@@ -352,6 +352,28 @@ has to be true first." The only sanctioned way to stop a gate from
 blocking completion is `override --gate gate3`/`gate4` (Q2's answer, an
 explicit act with its own audit trail), never a special case inside
 `cmd_complete` itself.
+
+**Q4's limitation, stated plainly (found by QA1's round-1 audit,
+reproduced: declare gate3, record a PASS, make a substantial further
+code change, run `complete` — it still reports the gate confirmed).**
+`cmd_complete` checks only whether a gate's *last recorded* result is
+`PASS`; it does not check *when* that PASS was recorded relative to the
+code, because nothing in this design binds a gate result to a commit the
+way `qa1_audit_file_hash`/`qa1_audited_tree_hash` bind a QA1 PASS to a
+specific sprint-file content and tree hash. This is Q3's own choice,
+correctly extended from `last_shipped_commit` and `qa1_audit_result` (see
+Q3: both are true historical facts, not freshness tokens, and neither
+gets nulled on reopen) — applied here to gate results too, just not stated
+outright until now. A gate PASS recorded once stays valid regardless of
+what happens to the code afterward, until someone records a new
+FAIL/CONDITIONAL over it (or undeclares the gate via `override`).
+Building commit-binding for gate results — the accessibility/legal
+equivalent of QA1's hash mechanism — is a real, separate design question,
+and is deliberately **not** attempted here: it is not required by any of
+this sprint's five questions, and building it now, unasked, is exactly
+the in-scope-creep this project's own discipline exists to catch. If this
+gap needs closing, that is Master Controller's call to scope as its own
+requirement, not something to improvise into this diff.
 
 **Q5 — no separate mechanism; the verdict recording IS the judgement
 call.** A PASS never reopens anything and is never blocked, regardless of
@@ -424,3 +446,38 @@ script before touching anything), affect the harness only, not
 locally (`PYTHONIOENCODING=utf-8`, a `C:\tmp` junction) without editing
 either file — fixing a local Windows console/MSYS quirk is not this
 sprint's job and isn't reflected in any diff.
+
+**Round 2, after QA1's CONDITIONAL.** QA1 found and reproduced (declare
+gate3, PASS it, make a substantial further change, `complete` still
+reports the gate confirmed) that "a fresh PASS on record" overstated what
+`cmd_complete` enforces — nothing invalidates a gate PASS when the code
+changes further after it, which was Q3's own deliberate choice for
+`last_shipped_commit`/`qa1_audit_result`, correctly extended to gate
+results here, just not disclosed accurately in the wording used to
+describe it. Fixed by rewording every site making that implication —
+four in `scripts/sprint_lifecycle.py` (the module docstring, both
+`cmd_record_gate` messages, and `cmd_complete`'s refusal text), one each
+in `dev-team-1.md`/`master-controller.md`, two in `dev-team-2.md` — to
+"a PASS on record" or equivalent, dropping "fresh" everywhere it implied
+commit-currency. Also reworded, for the same reason though not named in
+the four sites: both `.claude/commands/sprint-declare-gate.md` and
+`sprint-record-gate.md` (left inconsistent otherwise), and the sprint
+file's own Q1 prose (two mentions, above) — left `smoke_test.sh`'s
+assertion on `cmd_complete`'s exact refusal text in sync with the
+reworded code (`"needs a fresh PASS"` → `"needs a PASS recorded"`), since
+that assertion would otherwise have failed against the corrected message.
+Not touched: the four other "fresh" instances in `sprint_lifecycle.py`
+(all "a fresh QA1 audit/pass") — those describe a guarantee that
+genuinely is hash-enforced (Q3 for QA1 audits, not for gate results), so
+"fresh" is accurate there and rewording it would itself introduce an
+inaccuracy. Added the limitation statement to Q4 above, explicitly, per
+QA1's request. Did not build commit-binding for gate results — out of
+scope per QA1's own explicit instruction, a separate design question for
+Master Controller.
+
+Re-verified: `python -c "import ast; ast.parse(...)"` and
+`sprint_lifecycle.py --help` clean; `scripts/smoke_test.sh`'s updated
+assertion matches the reworded message; full suite re-run, sandboxed,
+same as round 1 — all 495 pre-existing lines plus every round-1 and
+round-2 addition pass, unchanged in behavior (wording only, no logic
+touched by this round).

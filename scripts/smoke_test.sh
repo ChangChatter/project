@@ -632,14 +632,14 @@ $SCRIPT status "$SPRINT_REOPEN" | grep -q "Phase: complete_ready" || fail "sprin
 $SCRIPT complete "$SPRINT_REOPEN" --user-said "trying to close before gate 3 is re-verified" \
   > /tmp/out.txt 2>&1 && fail "complete succeeded while gate 3's last recorded result was still the old FAIL" || true
 grep -qi "Gate 3" /tmp/out.txt || fail "complete's refusal should still name gate 3 (its last result is FAIL, not PASS)"
-grep -q "needs a fresh PASS" /tmp/out.txt || fail "complete should distinguish 'recorded FAIL, needs a fresh PASS' from 'never recorded'"
+grep -q "needs a PASS recorded" /tmp/out.txt || fail "complete should distinguish 'recorded FAIL, needs a PASS recorded' from 'never recorded'"
 
 $SCRIPT record-gate "$SPRINT_REOPEN" --which gate3 --verdict PASS --notes "NVDA re-verified clean" > /dev/null
 $SCRIPT complete "$SPRINT_REOPEN" --user-said "close it, gate 3 re-verified clean" > /dev/null || \
-  fail "complete still refused after gate 3's fresh PASS"
+  fail "complete still refused after gate 3's new PASS superseded the old FAIL"
 REOPEN_RECORD_COUNT=$($SCRIPT status "$SPRINT_REOPEN" --verbose | grep -c "human_gate_recorded")
 [ "$REOPEN_RECORD_COUNT" = "2" ] || \
-  fail "gate 3 should have exactly two human_gate_recorded events on record (the FAIL and the fresh PASS), got $REOPEN_RECORD_COUNT"
+  fail "gate 3 should have exactly two human_gate_recorded events on record (the FAIL and the later PASS), got $REOPEN_RECORD_COUNT"
 rm -f /tmp/out.txt
 
 echo "== declare-gate / record-gate refuse once a sprint is complete or aborted =="

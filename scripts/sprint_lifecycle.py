@@ -61,7 +61,7 @@ GroundTruth, neither with an instrument either of them has (CLAUDE.md's
 declares a gate applies (declare-gate, any phase before complete/aborted,
 idempotent, addable mid-sprint) and records its verdict (record-gate,
 same VALID_VERDICTS as qa1/groundtruth). cmd_complete refuses to close a
-sprint with any declared gate lacking a fresh PASS on record — see
+sprint with any declared gate that has no PASS on record — see
 cmd_complete's own comment for why there is no override for that check,
 same reasoning as the missing-user-said case.
 
@@ -761,7 +761,7 @@ def cmd_record_gate(args) -> None:
     checked early, mid-build) does not reopen anything — there is nothing
     to reopen, the sprint's normal loop hasn't reached complete_ready yet.
     It still blocks cmd_complete once that point is reached, same as any
-    other declared gate without a fresh PASS on record.
+    other declared gate with no PASS on record.
 
     A PASS is always available regardless of what the notes say — Sprint
     12 Q5's answer. Whether a finding is a defect (Sprint 9: violates a
@@ -815,7 +815,7 @@ def cmd_record_gate(args) -> None:
     else:
         print(f"{verdict} recorded but the sprint isn't at complete_ready, so nothing to reopen "
               "— it's already earlier in the loop. This will still block /sprint-complete "
-              "until a fresh PASS is recorded for this gate.")
+              "until a PASS is recorded for this gate.")
 
 
 def cmd_complete(args) -> None:
@@ -859,7 +859,7 @@ def cmd_complete(args) -> None:
             if gate["result"] is None:
                 missing.append(f"{label} is declared but has no recorded result")
             elif gate["result"] != "PASS":
-                missing.append(f"{label} last recorded {gate['result']}, needs a fresh PASS")
+                missing.append(f"{label} last recorded {gate['result']}, needs a PASS recorded")
         if state["phase"] != "complete_ready" or missing:
             die("Sprint is not ready to close:\n  - " + "\n  - ".join(missing or [f"phase is '{state['phase']}'"]))
 
