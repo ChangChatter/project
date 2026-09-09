@@ -286,6 +286,63 @@ and this one sat two paragraphs from a correction made for exactly that reason.
 Dev Team's file to write, not Master Controller's — the request stands and
 should be actioned in the same commit as the contrast fix.
 
+### Amendment 4 — 2026-09-08, after gate 4 (Chang's legal-content review), Master Controller
+
+Gate 4 approved this sprint's content with one change: the landing `<h1>`
+becomes "An Employer's Guide to HRT Complaints", replacing the handoff's
+verbatim "Most of these situations are workable."
+
+**Requirement 5's headline half is superseded by gate 4.** Requirement 5 asked
+for the handoff's **reassuring** framing variant, and the shipped page delivers
+exactly that — the requirement was met. The new headline is neither of the
+handoff's two variants; it is a third string, chosen by the reviewer whose
+judgement the gate-4 criterion explicitly reserved this decision for
+("this is a judgement call rather than a violation — but it is Chang's
+judgement call, not Dev Team's"). Recorded here so a later reader finding
+requirement 5 and the live page disagreeing knows which superseded which.
+Everything else in requirement 5 — the handoff's §Screens 1 layout, bands,
+and copy — stands.
+
+**This sprint closes at its currently shipped commit; the headline ships
+separately.** Sprint 11 hit the same `complete_ready` dead end as Sprint 9 —
+`cmd_reship` fires only from `groundtruth_live` and there is no scripted path
+back — but the resolution is different, and the difference is not the size of
+the change. It is this test:
+
+> Does the shipped commit violate any of this sprint's requirements or
+> acceptance criteria?
+
+Sprint 9: **yes.** Its own gate-3 criterion was unmet at `011647a`, so closing
+would have recorded as satisfied something demonstrably false. That is why it
+was aborted.
+
+Sprint 11: **no.** Every requirement is met and every gate passed at the
+shipped commit. Gate 4 returned a preference about copy that was never wrong
+against this definition, not a defect. A sprint's record is accurate as of its
+close; it does not have to track every later edit to files it created.
+
+**The headline goes out under CLAUDE.md's trivial fix fast lane**, which needs
+no lifecycle command because it sits outside the state machine by design. The
+product diff — one `<h1>` string in `app/page.tsx` — meets every criterion
+literally: one file, a component file, markup/text only, no state or logic, no
+new dependencies, not a data file. `23872f6` as committed also carries this
+sprint file and `docs/sprints/state/sprint-11.json`; **those are Sprint 11's
+own bookkeeping and do not travel under the fast lane.** The criteria are not
+read loosely to accommodate them — Sprint 10's Amendment 1 established that a
+gate should not read leniency into wording, and that binds the author of the
+wording too.
+
+**The gap is not fixed, and the fast lane did not fix it.** This is the second
+time a named human gate has landed a finding after the state machine's last
+usable transition — Sprint 9 at gate 3, Sprint 11 at gate 4. The fast lane
+rescued this one **only because the change happened to be one line**. Had gate
+4 asked for a copy rewrite across the landing page and `/about`, this sprint
+would be facing the same abort Sprint 9 took, for a legal review that worked
+exactly as designed. Two named gates now sit outside `sprint_lifecycle.py`,
+both structurally run after `groundtruth`, and the size of a future finding is
+not something the process gets to choose. The tooling sprint should move up the
+queue.
+
 ### Acceptance Criteria
 
 **Gate 1 — QA1 (static, pre-push):**
@@ -522,8 +579,18 @@ written to stay consistent with Sprint 5's no-outcome-prediction rule and
 the existing `/guide`-adjacent tone (see `docs/design-handoff.md`'s
 closing-note copy for `/guide`, not built this sprint but reviewed for
 register). None of it asserts a statute section number or a specific
-legal conclusion. Needs the same gate-4 pass as the hero's "Most of these
-situations are workable" framing.
+legal conclusion. Needs the same gate-4 pass as the hero headline below.
+
+**Gate 4, hero headline — resolved.** Chang's legal-content review
+approved this sprint's content with one change: the handoff's verbatim
+h1, "Most of these situations are workable." (a statement about likely
+outcomes, which is exactly what this Dev Notes entry and Amendment 2
+flagged as Chang's judgement call, not Dev Team's), is replaced with "An
+Employer's Guide to HRT Complaints" (`app/page.tsx`). One-line copy
+change, no logic touched; self-verified (`tsc`, `eslint`, `vitest`
+110/110, live render check) and recorded here as gate 4's resolution of
+the item this entry flagged. Every other authored-copy item above
+remains open pending the rest of gate 4.
 
 **`lib/guide.ts` is committed in this diff — deliberately, not an
 oversight.** It was already on disk when this sprint started (the
