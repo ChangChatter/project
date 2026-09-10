@@ -103,7 +103,7 @@ this doesn't unstick drift toward a real precondition that still has to be
 true — it removes the requirement itself, which is exactly why it belongs
 here rather than as a command any of the six roles reach for. It preserves
 the gate's prior recorded result (if any) in the history; only whether
-`/sprint-complete` still requires a fresh one changes.
+`/sprint-complete` still requires one at all changes.
 
 `--confirm` must be the literal word `OVERRIDE`, typed deliberately.
 `--reason` is required and non-empty — write what you actually reviewed,

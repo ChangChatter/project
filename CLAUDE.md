@@ -104,7 +104,7 @@ review) — for exactly the case CLAUDE.md's "a gate cannot be assigned a
 check it has no instrument for" section describes: neither QA1 nor
 GroundTruth has the instrument for these. Most sprints declare neither;
 `/sprint-declare-gate` only applies when a sprint's own file says one
-does. A declared gate blocks `/sprint-complete` until it has a fresh
+does. A declared gate blocks `/sprint-complete` until it has a
 PASS on record — see `/sprint-declare-gate`'s and `/sprint-record-gate`'s
 own command files for the mechanics, and Sprint 12's Dev Notes for why
 each design choice (the reopen edge, the hash-clearing, the

@@ -481,3 +481,23 @@ assertion matches the reworded message; full suite re-run, sandboxed,
 same as round 1 — all 495 pre-existing lines plus every round-1 and
 round-2 addition pass, unchanged in behavior (wording only, no logic
 touched by this round).
+
+**Round 3, after QA1's second CONDITIONAL.** Two survivors, both outside
+`sprint_lifecycle.py` and the three agent files round 2 searched, and both
+missed by a `grep` that only matches within a single line: `CLAUDE.md`'s
+own introduction of human gates ("A declared gate blocks
+`/sprint-complete` until it has a fresh\nPASS on record") had the word
+"fresh" and "PASS" split across a line wrap, so a literal `"fresh PASS"`
+search passed straight over it — QA1 named this the highest-traffic
+survivor, since it is the paragraph every role reads at session start, not
+a corner of the design doc. `docs/HUMAN_OVERRIDE.md`'s undeclare section
+had a grammatically distinct form, "requires a fresh one," which doesn't
+contain the substring "fresh PASS" at all. Both fixed by dropping "fresh"
+(CLAUDE.md: "until it has a\nPASS on record"; HUMAN_OVERRIDE.md: "requires
+one at all"). No code changed this round — re-ran only
+`python -c "import ast; ast.parse(...)"` and confirmed by direct read that
+neither remaining quoted instance of "fresh PASS" in this Dev Notes
+section (round 2's own write-up, describing the *old* wording as
+historical record of what was fixed) is a live overstatement; the full
+smoke suite wasn't re-run since `sprint_lifecycle.py`/`smoke_test.sh`
+are unchanged since round 2's already-verified state.
