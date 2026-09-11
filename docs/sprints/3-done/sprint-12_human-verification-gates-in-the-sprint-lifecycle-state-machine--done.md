@@ -2,7 +2,7 @@
 id: 12
 title: "Human verification gates in the sprint lifecycle state machine"
 epic: "Workflow Tooling"
-status: in_progress
+status: done
 created: 2026-09-09T00:00:00+00:00
 ---
 

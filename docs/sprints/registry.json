@@ -70,8 +70,8 @@
     "12": {
       "title": "Human verification gates in the sprint lifecycle state machine",
       "epic": "Workflow Tooling",
-      "status": "in_progress",
-      "file": "docs/sprints/2-in-progress/sprint-12_human-verification-gates-in-the-sprint-lifecycle-state-machine.md"
+      "status": "done",
+      "file": "docs/sprints/3-done/sprint-12_human-verification-gates-in-the-sprint-lifecycle-state-machine--done.md"
     }
   }
 }
